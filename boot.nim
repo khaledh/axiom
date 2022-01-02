@@ -747,43 +747,30 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   # halt()
 
 
-  #############################################
-  ## binarylang is not working right now due to an issue with inheritance
-  ## using ref sematnics under `--os:any` and `passl:"-nostdlib"
-  ## https://github.com/nim-lang/Nim/issues/19205#issuecomment-1003503808
-
+#############################################
+## binarylang is not working right now due to an issue with inheritance
+## using ref sematnics under `--os:any` and `passl:"-nostdlib"
+## https://github.com/nim-lang/Nim/issues/19205#issuecomment-1003503808
 
 # import binarylang
 # import binarylang/plugins
 
-  # struct(tableDescHeader, endian = l):
-  #   8:  signature[4]
-  #   32: length
-  #   # 8:  revision
-  #   # 8:  checksum
-  #   # s:  oemId(6)
-  #   # s:  oemTableId(8)
-  #   # 32: oemRevision
-  #   # s:  creatorId(4)
-  #   # 32: creatorRevision
+# struct(tableDescHeader, endian = l):
+#   8:  signature[4]
+#   32: length
+#   # 8:  revision
+#   # 8:  checksum
+#   # s:  oemId(6)
+#   # s:  oemTableId(8)
+#   # 32: oemRevision
+#   # s:  creatorId(4)
+#   # 32: creatorRevision
 
-  # struct(xsdt, endian = l):
-  #   32:  signature
-  #   32: length
-  #   # *tableDescHeader: hdr
-  #   # 64: entry[(hdr.length - s.getPosition) div 8]
+# struct(xsdt, endian = l):
+#   32:  signature
+#   32: length
+#   # *tableDescHeader: hdr
+#   # 64: entry[(hdr.length - s.getPosition) div 8]
 
-  # proc newMemoryBitStream(buf: pointer, bufLen: int): BitStream =
-  #   BitStream(stream: newMemoryStream(buf, bufLen), buffer: 0, bitsLeft: 0)
-
-
-###########################################
-# misc libc stuff that may be needed
-
-# type
-#   CFile {.importc: "FILE", header: "<stdio.h>", incompleteStruct.} = object
-#   CFilePtr* = ptr CFile ## The type representing a file handle.
-
-# proc fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): csize_t 
-#   {.exportc, codegenDecl: "$# $#(const void * restrict,  size_t,  size_t,  FILE * restrict)".} = 0
-# proc fflush*(f: CFilePtr): cint {.exportc.} = 0
+# proc newMemoryBitStream(buf: pointer, bufLen: int): BitStream =
+#   BitStream(stream: newMemoryStream(buf, bufLen), buffer: 0, bitsLeft: 0)
