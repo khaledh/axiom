@@ -23,3 +23,7 @@ $ qemu-system-x86_64 -bios /usr/share/edk2-ovmf/x64/OVMF_CODE.fd \
 ```
 
 Note that the above path for `OVMF_CODE.fd` is the default install path on Arch. For Ubuntu use the path ` /usr/share/OVMF/OVMF_CODE.fd` instead.
+
+### License
+
+MIT
