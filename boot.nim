@@ -1,21 +1,6 @@
-#[
-  nim c \
-    --os:any \
-    --mm:arc \
-    -d:useMalloc \
-    --noMain \
-    --passC:"-ffreestanding -fno-stack-protector" \
-    --passL:"-nostdlib -shared -dll -Wl,--subsystem,10 -e efiMain" \
-    --out:fatimg/EFI/BOOT/BOOTX64.EFI \
-    boot.nim
-
-    qemu-system-x86_64 -bios /usr/share/OVMF/OVMF_CODE.fd -nic none -hda fat:rw:fatimg
-]#
-
 import std/strbasics
 import std/strformat
 import std/strutils
-# import std/streams
 import std/tables
 import typetraits
 
@@ -25,7 +10,6 @@ import cpu
 import malloc
 import util
 import uefi
-
 
 
 var sysTable: ptr EfiSystemTable
