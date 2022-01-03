@@ -9,38 +9,44 @@ type
     baseAddress* {.bitsize: 24.}: uint64
     reserved3    {.bitsize: 28.}: uint64
 
-let apicBaseMsr = cast[Ia32ApicBaseMsr](readMSR(0x1b))
-let apicBaseAddress = apicBaseMsr.baseAddress shl 12
+var lapicBaseMsr*: Ia32ApicBaseMsr
+var lapicBaseAddress*: uint32
+
+proc lapicLoadBaseAddress*() =
+  lapicBaseMsr = cast[Ia32ApicBaseMsr](readMSR(0x1b))
+  lapicBaseAddress = (lapicBaseMsr.baseAddress shl 12).uint32
+
 
 #[
   Local APIC Registers
 ]#
 
-const
-  LapicIdRegisterOffset*            = 0x020
-  LapicVersionRegisterOffset*       = 0x030
-  TaskPriorityRegisterOffset*       = 0x080
-  ProcessorPriorityRegisterOffset*  = 0x0a0
-  EoiRegisterOffset*                = 0x0b0
-  LogicalDestinationRegisterOffset* = 0x0d0
-  DestinationFormatRegisterOffset*  = 0x0e0
-  SpuriousInterruptRegisterOffset*  = 0x0f0
-  InServiceRegisterOffset*          = 0x100
-  TriggerModeRegisterOffset*        = 0x180
-  InterruptRequestRegisterOffset*   = 0x200
-  ErrorStatusRegisterOffset*        = 0x280
-  LvtCmciRegisterOffset*            = 0x2f0
-  InterruptCommandRegisterLoOffset* = 0x300
-  InterruptCommandRegisterHiOffset* = 0x310
-  LvtTimerRegisterOffset*           = 0x320
-  LvtThermalSensorRegisterOffset*   = 0x330
-  LvtPerfMonCountersRegisterOffset* = 0x340
-  LvtLint0RegisterOffset*           = 0x350
-  LvtLint1RegisterOffset*           = 0x360
-  LvtErrorRegisterOffset*           = 0x370
-  TimerInitialCountRegisterOffset*  = 0x380
-  TimerCurrentCountRegisterOffset*  = 0x390
-  TimerDivideConfigRegisterOffset*  = 0x3e0
+type
+  LapicOffset* = enum
+    LapicId            = 0x020
+    LapicVersion       = 0x030
+    TaskPriority       = 0x080
+    ProcessorPriority  = 0x0a0
+    Eoi                = 0x0b0
+    LogicalDestination = 0x0d0
+    DestinationFormat  = 0x0e0
+    SpuriousInterrupt  = 0x0f0
+    InService          = 0x100
+    TriggerMode        = 0x180
+    InterruptRequest   = 0x200
+    ErrorStatus        = 0x280
+    LvtCmci            = 0x2f0
+    InterruptCommandLo = 0x300
+    InterruptCommandHi = 0x310
+    LvtTimer           = 0x320
+    LvtThermalSensor   = 0x330
+    LvtPerfMonCounters = 0x340
+    LvtLint0           = 0x350
+    LvtLint1           = 0x360
+    LvtError           = 0x370
+    TimerInitialCount  = 0x380
+    TimerCurrentCount  = 0x390
+    TimerDivideConfig  = 0x3e0
 
 type
   LapicIdRegister* {.packed.} = object
@@ -52,7 +58,7 @@ type
     reserved1    {.bitsize:  8.}: uint32
     maxLvtEntry* {.bitsize:  8.}: uint32
     suppressEoiBroadcastSupported*
-                 {.bitsize:  8.}: uint32
+                 {.bitsize:  1.}: uint32
     reserved2    {.bitsize:  7.}: uint32
 
   SupriousInterruptVectorRegister* {.packed.} = object
@@ -116,5 +122,7 @@ type
 
 
 proc lapicRead*(offset: int): uint32 =
-  let temp = cast[ptr uint32](apicBaseAddress + offset.uint64)
-  result = temp[]
+  result = cast[ptr uint32](lapicBaseAddress + offset.uint16)[]
+
+proc lapicRead*(offset: LapicOffset): uint32 {.inline.} =
+  lapicRead(offset.int)

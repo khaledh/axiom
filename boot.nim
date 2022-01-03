@@ -7,6 +7,7 @@ import typetraits
 import acpi
 import clib
 import cpu
+import ioapic
 import lapic
 import malloc
 import util
@@ -136,7 +137,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   var cr0 = readCR0()
 
   println("")
-  println(&"CR0 = 0x{cr0:.>16x}")
+  println(&"CR0 = {cr0:.>16x}h")
   println(&"  .PE          Protection Enable                   {cr0 shr  0 and 1}")
   println(&"  .MP          Monitor Coprocessor                 {cr0 shr  1 and 1}")
   println(&"  .EM          Emulation                           {cr0 shr  2 and 1}")
@@ -155,7 +156,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   var cr4 = readCR4()
 
   println("")
-  println(&"CR4 = 0x{cr4:.>16x}")
+  println(&"CR4 = {cr4:.>16x}h")
   println(&"  .VME         Virtual-8086 Mode Extensions        {cr4 shr  0 and 1}")
   println(&"  .PVI         Protected-Mode Virtual Interrupts   {cr4 shr  1 and 1}")
   println(&"  .TSD         Time Stamp Disable                  {cr4 shr  2 and 1}")
@@ -190,7 +191,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
   var efer = readMSR(0xC0000080'u32)  # EFER
   println("")
-  println(&"IA32_EFER = 0x{efer:.>16x}")
+  println(&"IA32_EFER = {efer:.>16x}h")
   println(&"  .SCE         SYSCALL Enable                      {efer shr  0 and 1}")
   println(&"  .LME         IA-32e Mode Enable                  {efer shr  8 and 1}")
   println(&"  .LMA         IA-32e Mode Active                  {efer shr 10 and 1}")
@@ -212,7 +213,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
   println("")
   println("Global Descritpor Table")
-  println(&"  GDT Base  = 0x{gdt_desc.base:0>16x}")
+  println(&"  GDT Base  = {gdt_desc.base:0>16x}h")
   println(&"  GDT Limit = {gdt_desc.limit}")
 
   type SegmentDescriptor {.packed.} = object
@@ -235,7 +236,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   for i in 0..8:
     let desc = cast[ptr SegmentDescriptor](gdt_desc.base + i.uint64 * 8)
     print(&"  [{i}] ")
-    # print(&"0x{cast[uint64](desc[])} ")
+    # print(&"{cast[uint64](desc[])}h ")
     if cast[uint64](desc[]) == 0:
       println("Null Descriptor")
       continue
@@ -286,7 +287,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
   println("")
   println("Interrupt Descritpor Table")
-  println(&"  IDT Base  = 0x{idt_desc.base:0>16x}")
+  println(&"  IDT Base  = {idt_desc.base:0>16x}h")
   println(&"  IDT Limit = {idt_desc.limit}")
 
   type InterruptDescriptor {.packed.} = object
@@ -326,7 +327,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
     if i in [0, 200, 255]:
       print(&"  [{i:>3}] ")
-      # print(&"0x{cast[ptr uint64](cast[uint64](desc) + 8)[]}")
+      # print(&"{cast[ptr uint64](cast[uint64](desc) + 8)[]}h")
       # println(&"{cast[uint64](desc[])} ")
       let descType = case desc.type
         of 0b0010: "LDT"
@@ -340,7 +341,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
       print(descType)
 
       print(&"  Selector={desc.selector:0>2x}")
-      println(&"  Offset=0x{(desc.offset32.uint64 shl 32) or (desc.offset16.uint64 shl 16) or (desc.offset00):x}")
+      println(&"  Offset={(desc.offset32.uint64 shl 32) or (desc.offset16.uint64 shl 16) or (desc.offset00):x}h")
 
 
     elif i == 1:
@@ -374,11 +375,11 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   println("")
   println("CPUID")
   println(&"  Vendor:                    {vendor}")
-  println(&"  Highest Basic Function:    0x{eax:0>2x}")
+  println(&"  Highest Basic Function:    {eax:0>2x}h")
 
   eax = 0x80000000'u32
   cpuid(addr eax, addr ebx, addr ecx, addr edx)
-  println(&"  Highest Extended Function: 0x{eax:0>2x}")
+  println(&"  Highest Extended Function: {eax:0>2x}h")
 
   eax = 1
   cpuid(addr eax, addr ebx, addr ecx, addr edx)
@@ -393,10 +394,10 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   var stepping = eax and 0xf
 
   println("")
-  println(&"  Processor Type:            0x{procType:0>2x}")
-  println(&"  Family ID:                 0x{family:0>2x}")
-  println(&"  Model ID:                  0x{model:0>2x}")
-  println(&"  Stepping ID:               0x{stepping:1x}")
+  println(&"  Processor Type:            {procType:0>2x}h")
+  println(&"  Family ID:                 {family:0>2x}h")
+  println(&"  Model ID:                  {model:0>2x}h")
+  println(&"  Stepping ID:               {stepping:1x}h")
 
   type CpuIdFeaturesEcx {.packed.} = object
     sse3        {.bitsize: 1.}: uint32
@@ -484,7 +485,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   println(&"  # Physical Address Bits: {eax and 0xff}")
   println(&"  # Linear Address Bits:   {(eax shr 8) and 0xff}")
   println("")
-  println(&"  PML4 Table Address = 0x{pml4addr:.>16x}")
+  println(&"  PML4 Table Address = {pml4addr:.>16x}h")
 
   type PagingL4Entry {.packed.} = object
     present    {.bitsize:  1.}: uint64  # bit      0
@@ -648,7 +649,6 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   if rsdp != nil:
     println("")
     println("RSDP")
-    # println(&"  Length:   {rsdp.length}")
     println(&"  Revision: {rsdp.revision:x}")
 
     let xsdt = cast[ptr TableDescriptionHeader](rsdp.xsdtAddress)
@@ -656,8 +656,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
     println("")
     println("XSDT")
-    # println(&"  Length:   {xsdt.length}")
-    println(&"  Revision: 0x{xsdt.revision}")
+    println(&"  Revision: {xsdt.revision}h")
     println(&"  Number of Entries: {numEntries}")
     println("")
 
@@ -675,17 +674,17 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     if not isNil(madt):
       println("")
       println("MADT")
-      # println(&"  Length:        {madt.hdr.length}")
       println(&"  Local APIC Address: {madt.lapicAddress:0>8x}")
       println(&"  Flags:              {madt.flags}")
       println("")
       println(&"  Interrupt Controller Structures")
 
+      var ioapic: ptr IoApic
+
       var intCtrlStruct = cast[ptr InterruptControllerHeader](cast[uint64](madt) + sizeof(TableDescriptionHeader).uint64 + 8)
       while cast[uint64](intCtrlStruct) - cast[uint64](madt) < madt.hdr.length:
         println("")
         println(&"    {intCtrlStruct.typ}")
-        # println(&"  Length = {intCtrlStruct.len}")
         case intCtrlStruct.typ
           of ictLocalApic:
             let lapic = cast[ptr LocalApic](intCtrlStruct)
@@ -693,10 +692,11 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
             println(&"      LAPIC ID:      {lapic.lapicId}")
             println(&"      Flags:         {lapic.flags}")
           of ictIoApic:
-            let ioapic = cast[ptr IoApic](intCtrlStruct)
+            ioapic = cast[ptr IoApic](intCtrlStruct)
             println(&"      I/O APIC ID:   {ioapic.ioapicId}")
             println(&"      Address:       {ioapic.address:0>8x}")
             println(&"      GSI Base:      {ioapic.gsiBase}")
+            setIoApic(ioapic.ioapicId, ioapic.address, ioapic.gsiBase)
           of ictInterruptSourceOverride:
             let intSrcOverride = cast[ptr InterruptSourceOverride](intCtrlStruct)
             println(&"      Bus:           {intSrcOverride.bus}")
@@ -705,25 +705,37 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
             println(&"      Flags:         {intSrcOverride.flags}")
           of ictLocalApicNmi:
             let lapicNmi = cast[ptr LocalApicNmi](intCtrlStruct)
-            println(&"      Processor UID: {lapicNmi.processorUid}")
+            println(&"      Processor UID: {lapicNmi.processorUid:0>2x}h")
             println(&"      Flags:         {lapicNmi.flags}")
             println(&"      LINT#:         {lapicNmi.lintN}")
           else: discard
         intCtrlStruct = cast[ptr InterruptControllerHeader](cast[uint64](intCtrlStruct) + intCtrlStruct.len)
 
+      if not isNil(ioapic):
+        println("")
+        println("I/O APIC")
 
-  let apicBaseMsr = cast[Ia32ApicBaseMsr](readMSR(0x1b))
-  let apicBaseAddress = apicBaseMsr.baseAddress shl 12
+        let ioapicId = cast[IoApicIdRegister](ioapicRead(0))
+        let ioapicVer = cast[IoApicVersionRegister](ioapicRead(1))
+        println(&"  IOAPICID  = {ioapicId.id}")
+        println(&"  IOAPICVER = Version: {ioapicVer.version:0>2x}h, MaxRedirectionEntry: {ioapicVer.maxRedirEntry}")
+        println("  IOREDTBL[23:0]")
+        for i in 0..ioapicVer.maxRedirEntry:
+          let entry = (ioapicRead(2*i.int + 0x10).uint64 shl 32) or ioapicRead(2*i.int + 0x11)
+          println(&"  [{i: >2}] {entry:0>16x} {cast[IoApicRedirectionEntry](entry)}")
+
+  lapicLoadBaseAddress()
+
   println("")
   println("IA32_APIC_BASE MSR")
-  println(&"  Is Bootstrap Processor (BSP) = {apicBaseMsr.isBsp}")
-  println(&"  APIC Global Enable           = {apicBaseMsr.enabled}")
-  println(&"  APIC Base Address            = {apicBaseAddress:0>8x}")
+  println(&"  Is Bootstrap Processor (BSP) = {lapicBaseMsr.isBsp}")
+  println(&"  APIC Global Enable           = {lapicBaseMsr.enabled}")
+  println(&"  APIC Base Address            = {lapicBaseAddress:0>8x}")
 
   println("")
   println("Local APIC Registers")
 
-  let lapicid = cast[LapicIdRegister](lapicRead(LapicIdRegisterOffset))
+  let lapicid = cast[LapicIdRegister](lapicRead(LapicOffset.LapicId))
   println("")
   println("  APIC ID Register")
   println(&"    APIC ID      = {lapicid.apicId}")
@@ -731,22 +743,22 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   let lapicVersion = cast[LapicVersionRegister](lapicRead(0x30))
   println("")
   println("  APIC Version Register")
-  println(&"    Version                           = 0x{lapicVersion.version:0>2x}")
+  println(&"    Version                           = {lapicVersion.version:0>2x}h")
   println(&"    Max LVT Entry:                    = {lapicVersion.maxLvtEntry}")
   println(&"    Suppress EOI-broadcasts Supported = {lapicVersion.suppressEoiBroadcastSupported}")
 
 
-  let svr = cast[SupriousInterruptVectorRegister](lapicRead(0xF0))
+  let svr = cast[SupriousInterruptVectorRegister](lapicRead(LapicOffset.SpuriousInterrupt))
   println("")
   println("  Spurious Interrupt Vector Register")
-  println(&"    Vector       = 0x{svr.vector:0>2x}")
+  println(&"    Vector       = {svr.vector:0>2x}h")
   println(&"    APIC Enabled = {svr.apicEnable}")
 
 
-  let timer = cast[LvtTimerRegister](lapicRead(0x320))
-  let lint0 = cast[LvtRegister](lapicRead(0x350))
-  let lint1 = cast[LvtRegister](lapicRead(0x360))
-  let error = cast[LvtRegister](lapicRead(0x370))
+  let timer = cast[LvtTimerRegister](lapicRead(LapicOffset.LvtTimer))
+  let lint0 = cast[LvtRegister](lapicRead(LapicOffset.LvtLint0))
+  let lint1 = cast[LvtRegister](lapicRead(LapicOffset.LvtLint1))
+  let error = cast[LvtRegister](lapicRead(LapicOffset.LvtError))
 
   println("")
   println("  LVT Registers")
@@ -761,9 +773,6 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   if lapicVersion.maxLvtEntry >= 5:
     let therm = cast[LvtRegister](lapicRead(0x330))
     println(&"    Therm  {therm.vector:0>2x}      {therm.deliveryMode: <12}  {therm.deliveryStatus}                                                    {therm.mask}")
-
-
-
 
 
   #############################################
