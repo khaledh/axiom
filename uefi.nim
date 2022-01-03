@@ -18,17 +18,17 @@ type
 
   EfiSystemTable* = object
     header*: EfiTableHeader
-    firmwareVendor*: WideCString     # EDK II
-    firmwareRevision*: uint32        # 0x00_01_00_00
+    firmwareVendor*: WideCString
+    firmwareRevision*: uint32
     consoleInHandle*: EfiHandle
-    conIn*: pointer                  # SIMPLE_INPUT_INTERFACE
+    conIn*: pointer
     consoleOutHandle*: EfiHandle
-    conOut*: ptr SimpleTextOutputInterface                 # SIMPLE_TEXT_OUTPUT_INTERFACE
+    conOut*: ptr SimpleTextOutputInterface
     standardErrorHandle*: EfiHandle
-    stdErr*: ptr SimpleTextOutputInterface                 # SIMPLE_TEXT_OUTPUT_INTERFACE
+    stdErr*: ptr SimpleTextOutputInterface
     runtimeServices*: pointer
     bootServices*: ptr EfiBootServices
-    numTableEntries*: uint          # 11
+    numTableEntries*: uint
     configTable*: ptr UncheckedArray[EfiConfigurationTableEntry]
 
   SimpleTextOutputInterface* = object
@@ -119,10 +119,22 @@ type
     setMem*: pointer
     createEventEx*: pointer
 
-  GetMemoryMap* = proc (memoryMapSize: ptr uint, memoryMap: ptr UncheckedArray[EfiMemoryDescriptor], mapKey: ptr uint, descriptorSize: ptr uint, descriptorVersion: ptr uint32): EfiStatus {.cdecl.}
   ExitBootServices* = proc (imageHandler: EfiHandle, mapKey: uint): EfiStatus {.cdecl.}
-  AllocatePool* = proc (poolType: EfiMemoryType, size: uint, buffer: ptr pointer): EfiStatus {.cdecl.}
   LocateProtocol* = proc (protocol: ptr Guid, registration: pointer, `interface`: ptr pointer): EfiStatus {.cdecl.}
+
+  #[
+    Memory Management
+  ]#
+
+  AllocatePool* = proc (poolType: EfiMemoryType, size: uint, buffer: ptr pointer): EfiStatus {.cdecl.}
+
+  GetMemoryMap* = proc (
+    memoryMapSize: ptr uint,
+    memoryMap: ptr UncheckedArray[EfiMemoryDescriptor],
+    mapKey: ptr uint,
+    descriptorSize: ptr uint,
+    descriptorVersion: ptr uint32
+  ): EfiStatus {.cdecl.}
 
   EfiMemoryType* = enum
     mtReservedMemoryType      = "Reserved"
@@ -150,6 +162,10 @@ type
     attribute*: uint64
   EfiPhysicalAddress* = distinct uint64
   EfiVirtualAddress* = distinct uint64
+
+  #[
+    Graphics Output Protocol
+  ]#
 
   EfiGraphicsOutputProtocol* = object
     queryMode*: GopQueryMode

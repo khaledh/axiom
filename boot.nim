@@ -7,6 +7,7 @@ import typetraits
 import acpi
 import clib
 import cpu
+import lapic
 import malloc
 import util
 import uefi
@@ -82,11 +83,11 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   discard sysTable.conOut.enableCursor(systemTable.conOut, false)
 
   println("""
-        _          _                    ___  ____  
-       / \   __  _(_) ___  _ __ ___    / _ \/ ___| 
-      / _ \  \ \/ / |/ _ \| '_ ` _ \  | | | \___ \ 
-     / ___ \  >  <| | (_) | | | | | | | |_| |___) |
-    /_/   \_\/_/\_\_|\___/|_| |_| |_|  \___/|____/ 
+      _          _                    ___  ____  
+     / \   __  _(_) ___  _ __ ___    / _ \/ ___| 
+    / _ \  \ \/ / |/ _ \| '_ ` _ \  | | | \___ \ 
+   / ___ \  >  <| | (_) | | | | | | | |_| |___) |
+  /_/   \_\/_/\_\_|\___/|_| |_| |_|  \___/|____/ 
   """)
 
   println("")
@@ -710,25 +711,68 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
           else: discard
         intCtrlStruct = cast[ptr InterruptControllerHeader](cast[uint64](intCtrlStruct) + intCtrlStruct.len)
 
-  # read the IA32_APIC_BASE MSR (0x1b)
-  type Ia32ApicBaseMsr {.packed.} = object
-    r1          {.bitsize: 8.}:  uint64
-    isBsp       {.bitsize: 1.}:  uint64
-    r2          {.bitsize: 2.}:  uint64
-    enabled     {.bitsize: 1.}:  uint64
-    baseAddress {.bitsize: 24.}: uint64
-    r3          {.bitsize: 28.}: uint64
 
   let apicBaseMsr = cast[Ia32ApicBaseMsr](readMSR(0x1b))
+  let apicBaseAddress = apicBaseMsr.baseAddress shl 12
   println("")
   println("IA32_APIC_BASE MSR")
   println(&"  Is Bootstrap Processor (BSP) = {apicBaseMsr.isBsp}")
   println(&"  APIC Global Enable           = {apicBaseMsr.enabled}")
-  println(&"  APIC Base Address            = {apicBaseMsr.baseAddress shl 12:0>8x}")
+  println(&"  APIC Base Address            = {apicBaseAddress:0>8x}")
+
+  println("")
+  println("Local APIC Registers")
+
+  let lapicid = cast[LapicIdRegister](lapicRead(LapicIdRegisterOffset))
+  println("")
+  println("  APIC ID Register")
+  println(&"    APIC ID      = {lapicid.apicId}")
+
+  let lapicVersion = cast[LapicVersionRegister](lapicRead(0x30))
+  println("")
+  println("  APIC Version Register")
+  println(&"    Version                           = 0x{lapicVersion.version:0>2x}")
+  println(&"    Max LVT Entry:                    = {lapicVersion.maxLvtEntry}")
+  println(&"    Suppress EOI-broadcasts Supported = {lapicVersion.suppressEoiBroadcastSupported}")
 
 
+  let svr = cast[SupriousInterruptVectorRegister](lapicRead(0xF0))
+  println("")
+  println("  Spurious Interrupt Vector Register")
+  println(&"    Vector       = 0x{svr.vector:0>2x}")
+  println(&"    APIC Enabled = {svr.apicEnable}")
+
+
+  let timer = cast[LvtTimerRegister](lapicRead(0x320))
+  let lint0 = cast[LvtRegister](lapicRead(0x350))
+  let lint1 = cast[LvtRegister](lapicRead(0x360))
+  let error = cast[LvtRegister](lapicRead(0x370))
+
+  println("")
+  println("  LVT Registers")
+  println(&"           Vector  DeliveryMode  DeliveryStatus  Polarity    TriggerMode  RemoteIRRFlag  Mask")
+  println(&"    Timer  {timer.vector:0>2x}                    {timer.deliveryStatus}                                                    {timer.mask}     TimerMode: {timer.timerMode}")
+  println(&"    LINT0  {lint0.vector:0>2x}      {lint0.deliveryMode: <12}  {lint0.deliveryStatus}            {lint0.intPolarity}  {lint0.intTriggerMode}         {lint0.remoteIrrFlag}              {lint0.mask}")
+  println(&"    LINT1  {lint1.vector:0>2x}      {lint1.deliveryMode: <12}  {lint1.deliveryStatus}            {lint1.intPolarity}  {lint1.intTriggerMode}         {lint1.remoteIrrFlag}              {lint1.mask}")
+  println(&"    Error  {error.vector:0>2x}                    {error.deliveryStatus}                                                    {error.mask}")
+  if lapicVersion.maxLvtEntry >= 4:
+    let perf = cast[LvtRegister](lapicRead(0x340))
+    println(&"    Perf   {perf.vector:0>2x}      {perf.deliveryMode: <12}  {perf.deliveryStatus}                                                    {perf.mask}")
+  if lapicVersion.maxLvtEntry >= 5:
+    let therm = cast[LvtRegister](lapicRead(0x330))
+    println(&"    Therm  {therm.vector:0>2x}      {therm.deliveryMode: <12}  {therm.deliveryStatus}                                                    {therm.mask}")
+
+
+
+
+
+  #############################################
+  ##  Exit UEFI Boot Services
 
   let ebsStatus = sysTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
+
+  #############################################
+  ##  Setup interrupts
 
   # let's disable the PIC
   const
@@ -758,19 +802,17 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 # struct(tableDescHeader, endian = l):
 #   8:  signature[4]
 #   32: length
-#   # 8:  revision
-#   # 8:  checksum
-#   # s:  oemId(6)
-#   # s:  oemTableId(8)
-#   # 32: oemRevision
-#   # s:  creatorId(4)
-#   # 32: creatorRevision
+#   8:  revision
+#   8:  checksum
+#   s:  oemId(6)
+#   s:  oemTableId(8)
+#   32: oemRevision
+#   s:  creatorId(4)
+#   32: creatorRevision
 
 # struct(xsdt, endian = l):
-#   32:  signature
-#   32: length
-#   # *tableDescHeader: hdr
-#   # 64: entry[(hdr.length - s.getPosition) div 8]
+#   *tableDescHeader: hdr
+#   64: entry[(hdr.length - s.getPosition) div 8]
 
 # proc newMemoryBitStream(buf: pointer, bufLen: int): BitStream =
 #   BitStream(stream: newMemoryStream(buf, bufLen), buffer: 0, bitsLeft: 0)
