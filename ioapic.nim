@@ -1,16 +1,16 @@
 type
-  IoApicIdRegister* {.packed.} = object
+  IoapicIdRegister* {.packed.} = object
     reserved1        {.bitsize: 24.}: uint32
     id*              {.bitsize:  4.}: uint32
     reserved2        {.bitsize: 24.}: uint32
   
-  IoApicVersionRegister* {.packed.} = object
+  IoapicVersionRegister* {.packed.} = object
     version*         {.bitsize:  8.}: uint32
     reserved1        {.bitsize:  8.}: uint32
     maxRedirEntry*   {.bitsize:  8.}: uint32
     reserved2        {.bitsize:  8.}: uint32
 
-  IoApicRedirectionEntry* {.packed.} = object
+  IoapicRedirectionEntry* {.packed.} = object
     vector*          {.bitsize:  8.}: uint64
     deliveryMode*    {.bitsize:  3.}: uint64
     destinationMode* {.bitsize:  1.}: uint64

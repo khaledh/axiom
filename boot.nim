@@ -304,13 +304,11 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     reserved: uint32
 
   {.push stackTrace:off.}
-  proc intHandler(intFrame: pointer) {.codegenDecl: "__attribute__ ((interrupt)) $# $#$#".}=
+  proc kbdIntHandler(intFrame: pointer) {.codegenDecl: "__attribute__ ((interrupt)) $# $#$#".}=
     println("")
-    println("  ===> Interrupt <===")
-    println("")
+    println("  ===> Key pressed <===")
+    lapicWrite(LapicOffset.Eoi, 0)
   {.pop.}
-
-  let intHandlerAddr = cast[uint64](intHandler)
 
   println("")
   println("  Interrupt Descriptors")
@@ -319,13 +317,14 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     if (desc.present == 0):
       continue
 
-    if i == 0xC8:
-      println("  Setting int 200 handler")
-      desc.offset00 = uint16(intHandlerAddr and 0xffff'u64)
-      desc.offset16 = uint16(intHandlerAddr shr 16 and 0xffff'u64)
-      desc.offset32 = uint32(intHandlerAddr shr 32)
+    if i == 0x33:  # Keyboard
+      println("  Setting keyboard interrupt handler (0x33)")
+      let kbdIntHandlerAddr = cast[uint64](kbdIntHandler)
+      desc.offset00 = uint16(kbdIntHandlerAddr and 0xffff'u64)
+      desc.offset16 = uint16(kbdIntHandlerAddr shr 16 and 0xffff'u64)
+      desc.offset32 = uint32(kbdIntHandlerAddr shr 32)
 
-    if i in [0, 200, 255]:
+    if i in [0, 0x33, 255]:
       print(&"  [{i:>3}] ")
       # print(&"{cast[ptr uint64](cast[uint64](desc) + 8)[]}h")
       # println(&"{cast[uint64](desc[])} ")
@@ -343,14 +342,8 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
       print(&"  Selector={desc.selector:0>2x}")
       println(&"  Offset={(desc.offset32.uint64 shl 32) or (desc.offset16.uint64 shl 16) or (desc.offset00):x}h")
 
-
     elif i == 1:
       println("  ...")
-
-  println("  Calling int 200")
-  asm """
-    int 0xC8
-  """
 
 
   #############################################
@@ -715,14 +708,33 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
         println("")
         println("I/O APIC")
 
+        # set keyboard interrupt: interrupt input 1 => vector 33h
+        let kbdRedirEntry = IoapicRedirectionEntry(
+          vector           : 0x33,
+          deliveryMode     : 0,  # Fixed
+          destinationMode  : 0,  # Physical
+          deliveryStatus   : 0,
+          polarity         : 0,  # ActiveHigh
+          remoteIrr        : 0,
+          triggerMode      : 0,  # Edge
+          mask             : 0,  # Enabled
+          destination      : 0,  # Lapic ID 0
+        )
+        ioapicWrite(0x12, cast[uint32](cast[uint64](kbdRedirEntry) and 0xffff))
+        ioapicWrite(0x13, cast[uint32](cast[uint64](kbdRedirEntry) shr 32))
+
         let ioapicId = cast[IoApicIdRegister](ioapicRead(0))
         let ioapicVer = cast[IoApicVersionRegister](ioapicRead(1))
         println(&"  IOAPICID  = {ioapicId.id}")
         println(&"  IOAPICVER = Version: {ioapicVer.version:0>2x}h, MaxRedirectionEntry: {ioapicVer.maxRedirEntry}")
-        println("  IOREDTBL[23:0]")
+        println("  IOREDTBL")
+        println("       Vector  DeliveryMode  DestinationMode  Destination  Polarity  TriggerMode  DeliveryStatus  RemoteIRR  Mask")
         for i in 0..ioapicVer.maxRedirEntry:
-          let entry = (ioapicRead(2*i.int + 0x10).uint64 shl 32) or ioapicRead(2*i.int + 0x11)
-          println(&"  [{i: >2}] {entry:0>16x} {cast[IoApicRedirectionEntry](entry)}")
+          let lo = ioapicRead(2*i.int + 0x10)
+          let hi = ioapicRead(2*i.int + 0x11)
+          let entry = cast[IoapicRedirectionEntry](hi.uint64 shl 32 or lo)
+          print(&"  [{i: >2}] {entry.vector:0>2x}h     {entry.deliveryMode: <12}  {entry.destinationMode: <15}  {entry.destination: <11}")
+          println(&"  {entry.polarity: <8}  {entry.triggerMode: <11}  {entry.deliveryStatus: <14}  {entry.remoteIrr: <9}  {entry.mask}")
 
   lapicLoadBaseAddress()
 
@@ -774,30 +786,34 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     let therm = cast[LvtRegister](lapicRead(0x330))
     println(&"    Therm  {therm.vector:0>2x}      {therm.deliveryMode: <12}  {therm.deliveryStatus}                                                    {therm.mask}")
 
-
   #############################################
   ##  Exit UEFI Boot Services
 
-  let ebsStatus = sysTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
+  # let ebsStatus = sysTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
 
   #############################################
   ##  Setup interrupts
 
   # let's disable the PIC
-  const
-    Pic1DataPort = 0x21
-    Pic2DataPort = 0xA1
+  # const
+  #   Pic1DataPort = 0x21
+  #   Pic2DataPort = 0xA1
 
-  # mask all interrupts
-  portOut8(Pic1DataPort, 0xff);
-  portOut8(Pic2DataPort, 0xff);
+  # # mask all interrupts
+  # portOut8(Pic1DataPort, 0xff);
+  # portOut8(Pic2DataPort, 0xff);
 
 
   #############################################
   ##  Shutdown
 
-  shutdown()
+  # shutdown()
   # halt()
+
+  while true:
+    asm """
+      hlt
+    """
 
 
 #############################################

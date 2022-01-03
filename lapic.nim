@@ -124,5 +124,11 @@ type
 proc lapicRead*(offset: int): uint32 =
   result = cast[ptr uint32](lapicBaseAddress + offset.uint16)[]
 
-proc lapicRead*(offset: LapicOffset): uint32 {.inline.} =
+proc lapicRead*(offset: LapicOffset): uint32 =
   lapicRead(offset.int)
+
+proc lapicWrite*(offset: int, value: uint32) =
+  cast[ptr uint32](lapicBaseAddress + offset.uint16)[] = value
+
+proc lapicWrite*(offset: LapicOffset, value: uint32) =
+  lapicWrite(offset.int, value)
