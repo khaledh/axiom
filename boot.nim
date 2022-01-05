@@ -5,8 +5,10 @@ import std/tables
 import typetraits
 
 import acpi
+import bitops
 import clib
 import cpu
+import font
 import ioapic
 import lapic
 import malloc
@@ -129,7 +131,35 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     discard gop.queryMode(gop, i, addr sizeOfInfo, addr modeInfo)
     println(&"  Mode {i:>2}: {modeInfo.horizontalResolution:>4} x {modeInfo.verticalResolution:>4}")
 
-  # discard systemTable.bootServices.exitBootServices(imageHandle, mapKey)
+  loadFont()
+  print(&"font={psfFont[0].uint8:0>2x} {psfFont[1].uint8:0>2x}")
+
+  # for i in 0..<800*600:
+  #   cast[ptr uint32](gop.mode.frameBufferBase + i.uint*4)[] = 0x353d45'u32
+
+# orange: #f57956
+# green: #8ebb8a
+# blue: #608aaf
+# blue-ish: #4a8e97
+# dark grey/black: #222629
+
+  # var fb = cast[ptr UncheckedArray[uint32]](gop.mode.frameBufferBase)
+  # var pos = 10*800 + 10
+  # var g = 0
+  # for glyph in values(Glyphs):
+  #   for r, bits in glyph:
+  #     for i in 0..<8:
+  #       if (rotateLeftBits(bits, i) and 1) == 1:
+  #         fb[pos + i] = 0xd4dae7
+  #     inc(pos, 800)
+  #   inc g
+  #   pos = 10*800 + 10 + g*8
+
+  # discard systemTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
+
+  # for i in 800*20..<800*40:
+  #   cast[ptr uint32](gop.mode.frameBufferBase + i.uint*4)[] = 0x0000ff00'u32
+  halt()
 
   #############################################
   ##  CPU: CR0 register

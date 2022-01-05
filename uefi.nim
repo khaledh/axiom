@@ -160,8 +160,8 @@ type
     virtualStart*: EfiVirtualAddress
     numberOfPages*: uint64
     attribute*: uint64
-  EfiPhysicalAddress* = distinct uint64
-  EfiVirtualAddress* = distinct uint64
+  EfiPhysicalAddress* = uint64
+  EfiVirtualAddress* = uint64
 
   #[
     Graphics Output Protocol
