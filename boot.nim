@@ -79,7 +79,6 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   var gop = cast[ptr EfiGraphicsOutputProtocol](igop)
 
   discard sysTable.conOut.setMode(sysTable.conOut, 2)
-  # discard gop.setMode(gop, 20)
 
 
   # discard sysTable.conOut.clearScreen(systemTable.conOut)
@@ -132,77 +131,48 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     println(&"  Mode {i:>2}: {modeInfo.horizontalResolution:>4} x {modeInfo.verticalResolution:>4}")
 
   loadFont()
-  # println("")
-  # println(&"PSF Font: Tamzen 8x16")
-  # println(&"  Magic    = {tamzen8x16[0]:0>2x}h {tamzen8x16[1]:0>2x}h")
-  # println(&"  Mode     = {tamzen8x16[2]:0>2x}h")
-  # println(&"  CharSize = {tamzen8x16[3]:0>2x}h")
-  # println("")
-  # println(&"PSF Font: Tamzen 7x14")
-  # println(&"  Magic    = {tamzen7x14[0]:0>2x}h {tamzen7x14[1]:0>2x}h {tamzen7x14[2]:0>2x}h {tamzen7x14[3]:0>2x}h")
-  # println(&"  Version  = {cast[ptr uint32](addr tamzen7x14[4])[]}h")
-  # println(&"  HdrSize  = {cast[ptr uint32](addr tamzen7x14[8])[]}h")
-  # println(&"  Flags    = {cast[ptr uint32](addr tamzen7x14[12])[]}h")
-  # println(&"  Length   = {cast[ptr uint32](addr tamzen7x14[16])[]}h")
-  # println(&"  CharSize = {cast[ptr uint32](addr tamzen7x14[24])[]}h")
-  # println(&"  Height   = {cast[ptr uint32](addr tamzen7x14[28])[]}h")
-  # println(&"  Width    = {cast[ptr uint32](addr tamzen7x14[32])[]}h")
-  # println("")
-  println(&"PSF Font: Terminess-Powerline 8x14")
-  println(&"  Magic    = {ter8x14[0]:0>2x}h {ter8x14[1]:0>2x}h {ter8x14[2]:0>2x}h {ter8x14[3]:0>2x}h")
-  println(&"  Version  = {cast[ptr uint32](addr ter8x14[4])[]}h")
-  println(&"  HdrSize  = {cast[ptr uint32](addr ter8x14[8])[]}h")
-  println(&"  Flags    = {cast[ptr uint32](addr ter8x14[12])[]}h")
-  println(&"  Length   = {cast[ptr uint32](addr ter8x14[16])[]}h")
-  println(&"  CharSize = {cast[ptr uint32](addr ter8x14[24])[]}h")
-  println(&"  Height   = {cast[ptr uint32](addr ter8x14[28])[]}h")
-  println(&"  Width    = {cast[ptr uint32](addr ter8x14[32])[]}h")
+  println("")
+  println(&"PSF Font: Dina 8x16")
+  println(&"  Magic    = {dina8x16[0]:0>2x}h {dina8x16[1]:0>2x}h {dina8x16[2]:0>2x}h {dina8x16[3]:0>2x}h")
+  println(&"  Version  = {cast[ptr uint32](addr dina8x16[4])[]}")
+  println(&"  HdrSize  = {cast[ptr uint32](addr dina8x16[8])[]}")
+  println(&"  Flags    = {cast[ptr uint32](addr dina8x16[12])[]}")
+  println(&"  Length   = {cast[ptr uint32](addr dina8x16[16])[]}")
+  println(&"  CharSize = {cast[ptr uint32](addr dina8x16[20])[]}")
+  println(&"  Height   = {cast[ptr uint32](addr dina8x16[24])[]}")
+  println(&"  Width    = {cast[ptr uint32](addr dina8x16[28])[]}")
 
+# grey/blue background: #353d45
 # orange: #f57956
 # green: #8ebb8a
 # blue: #608aaf
 # blue-ish: #4a8e97
 # dark grey/black: #222629
 
+  discard gop.setMode(gop, 14)  # 1280x1024
   var fb = cast[ptr UncheckedArray[uint32]](gop.mode.frameBufferBase)
 
-  for i in 0..<800*600:
-    fb[i] = 0x353d45'u32
+  let fbWidth = 1280
+  let fbHeight = 1024
 
-  var pos = 10*800 + 0
+  # clear background
+  for i in 0 ..< (fbWidth * fbHeight):
+    fb[i] = 0x252d35'u32
+
+  var pos = 10*fbWidth + 10
   var g = 0
-  # for ch in "This article describes how to display those on graphical screen, which has the advantage that you don't have...":
-  #   let glyph = glyphs[ch.uint8]
-  #   for bits in glyph:
-  #     for i in 1..8:
-  #       if (rotateLeftBits(bits, i) and 1) == 1:
-  #         fb[pos + i] = 0xd4dae7
-  #     inc(pos, 800)
-  #   inc g
-  #   pos = 10*800 + 0 + g*8
-
-    # let glyph = glyphs7x14[ch.uint8]
-    # for bits in glyph:
-    #   for i in 1..7:
-    #     if (rotateLeftBits(bits, i) and 1) == 1:
-    #       fb[pos + i] = 0xd4dae7
-    #   inc(pos, 800)
-    # inc g
-    # pos = 10*800 + 0 + g*7
-
-    # let glyph = glyphs8x14[ch.uint8]
-    # for bits in glyph:
-    #   for i in 1..8:
-    #     if (rotateLeftBits(bits, i) and 1) == 1:
-    #       fb[pos + i] = 0xd4dae7
-    #   inc(pos, 800)
-    # inc g
-    # pos = 10*800 + 0 + g*8
+  for ch in """ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz !@#$%^&*()_+~`[{]}\|;:'",<.>/?""":
+    let glyph = glyphs8x16[ch.uint8]
+    for bits in glyph:
+      for i in 1..8:
+        if (rotateLeftBits(bits, i) and 1) == 1:
+          fb[pos + i] = 0xd4dae7
+      inc(pos, fbWidth)
+    inc g
+    pos = 10*fbWidth + 10 + g*8
 
   # discard systemTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
 
-  # for i in 800*20..<800*40:
-  #   cast[ptr uint32](gop.mode.frameBufferBase + i.uint*4)[] = 0x0000ff00'u32
   halt()
 
   #############################################
