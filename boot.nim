@@ -132,10 +132,31 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     println(&"  Mode {i:>2}: {modeInfo.horizontalResolution:>4} x {modeInfo.verticalResolution:>4}")
 
   loadFont()
-  print(&"font={psfFont[0].uint8:0>2x} {psfFont[1].uint8:0>2x}")
-
-  # for i in 0..<800*600:
-  #   cast[ptr uint32](gop.mode.frameBufferBase + i.uint*4)[] = 0x353d45'u32
+  # println("")
+  # println(&"PSF Font: Tamzen 8x16")
+  # println(&"  Magic    = {tamzen8x16[0]:0>2x}h {tamzen8x16[1]:0>2x}h")
+  # println(&"  Mode     = {tamzen8x16[2]:0>2x}h")
+  # println(&"  CharSize = {tamzen8x16[3]:0>2x}h")
+  # println("")
+  # println(&"PSF Font: Tamzen 7x14")
+  # println(&"  Magic    = {tamzen7x14[0]:0>2x}h {tamzen7x14[1]:0>2x}h {tamzen7x14[2]:0>2x}h {tamzen7x14[3]:0>2x}h")
+  # println(&"  Version  = {cast[ptr uint32](addr tamzen7x14[4])[]}h")
+  # println(&"  HdrSize  = {cast[ptr uint32](addr tamzen7x14[8])[]}h")
+  # println(&"  Flags    = {cast[ptr uint32](addr tamzen7x14[12])[]}h")
+  # println(&"  Length   = {cast[ptr uint32](addr tamzen7x14[16])[]}h")
+  # println(&"  CharSize = {cast[ptr uint32](addr tamzen7x14[24])[]}h")
+  # println(&"  Height   = {cast[ptr uint32](addr tamzen7x14[28])[]}h")
+  # println(&"  Width    = {cast[ptr uint32](addr tamzen7x14[32])[]}h")
+  # println("")
+  println(&"PSF Font: Terminess-Powerline 8x14")
+  println(&"  Magic    = {ter8x14[0]:0>2x}h {ter8x14[1]:0>2x}h {ter8x14[2]:0>2x}h {ter8x14[3]:0>2x}h")
+  println(&"  Version  = {cast[ptr uint32](addr ter8x14[4])[]}h")
+  println(&"  HdrSize  = {cast[ptr uint32](addr ter8x14[8])[]}h")
+  println(&"  Flags    = {cast[ptr uint32](addr ter8x14[12])[]}h")
+  println(&"  Length   = {cast[ptr uint32](addr ter8x14[16])[]}h")
+  println(&"  CharSize = {cast[ptr uint32](addr ter8x14[24])[]}h")
+  println(&"  Height   = {cast[ptr uint32](addr ter8x14[28])[]}h")
+  println(&"  Width    = {cast[ptr uint32](addr ter8x14[32])[]}h")
 
 # orange: #f57956
 # green: #8ebb8a
@@ -143,17 +164,40 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 # blue-ish: #4a8e97
 # dark grey/black: #222629
 
-  # var fb = cast[ptr UncheckedArray[uint32]](gop.mode.frameBufferBase)
-  # var pos = 10*800 + 10
-  # var g = 0
-  # for glyph in values(Glyphs):
-  #   for r, bits in glyph:
-  #     for i in 0..<8:
+  var fb = cast[ptr UncheckedArray[uint32]](gop.mode.frameBufferBase)
+
+  for i in 0..<800*600:
+    fb[i] = 0x353d45'u32
+
+  var pos = 10*800 + 0
+  var g = 0
+  # for ch in "This article describes how to display those on graphical screen, which has the advantage that you don't have...":
+  #   let glyph = glyphs[ch.uint8]
+  #   for bits in glyph:
+  #     for i in 1..8:
   #       if (rotateLeftBits(bits, i) and 1) == 1:
   #         fb[pos + i] = 0xd4dae7
   #     inc(pos, 800)
   #   inc g
-  #   pos = 10*800 + 10 + g*8
+  #   pos = 10*800 + 0 + g*8
+
+    # let glyph = glyphs7x14[ch.uint8]
+    # for bits in glyph:
+    #   for i in 1..7:
+    #     if (rotateLeftBits(bits, i) and 1) == 1:
+    #       fb[pos + i] = 0xd4dae7
+    #   inc(pos, 800)
+    # inc g
+    # pos = 10*800 + 0 + g*7
+
+    # let glyph = glyphs8x14[ch.uint8]
+    # for bits in glyph:
+    #   for i in 1..8:
+    #     if (rotateLeftBits(bits, i) and 1) == 1:
+    #       fb[pos + i] = 0xd4dae7
+    #   inc(pos, 800)
+    # inc g
+    # pos = 10*800 + 0 + g*8
 
   # discard systemTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
 
