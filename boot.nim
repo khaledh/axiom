@@ -152,11 +152,14 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   # clear background
   fb.clear(0x252d35'u32)
 
-  var fnt = loadFont16()
-  var con = initConsole(fb, left=8, top=8, font=fnt, maxCols=158, maxRows=62)
 
-  for i in 0 ..< 62:
-    con.write(&"Line {i}\n")
+  var fnt = loadFont16()
+  var con = initConsole(fb, left=8, top=16, font=fnt, maxCols=158, maxRows=62, color=0x252d35'u32)
+
+  for i in 0 ..< 300:
+    con.write(&"Line {i}")
+    if i < 299:
+      con.write("\n")
 
   # outString("""    _          _                    ___  ____  """, 10, 10)
   # outString("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """, 10, 26)

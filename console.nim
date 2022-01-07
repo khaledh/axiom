@@ -14,6 +14,9 @@ const
   Blue* = 0x608aaf
   Blueish* = 0x4a8e97
 
+var backbuffer {.align(16).}: array[1024*1280, uint32]
+var backbufferStart: int
+
 type
   Console* = object
     fb: Framebuffer
@@ -24,12 +27,19 @@ type
     maxRows: int
     currCol: int
     currRow: int
+    backColor: uint32
 
-proc initConsole*(fb: Framebuffer, left, top: int, font: Font16, maxCols, maxRows: int, currCol, currRow: int = 0): Console =
-  Console(fb: fb, left: left, top: top, font: font, maxCols: maxCols, maxRows: maxRows, currCol: currCol, currRow: currRow)
+proc initConsole*(fb: Framebuffer, left, top: int, font: Font16, maxCols, maxRows: int, currCol, currRow: int = 0, color: uint32 = 0): Console =
+  backbufferStart = 0
+  for i in 0 ..< 1024*1280:
+      backbuffer[i] = color
+  Console(fb: fb, left: left, top: top, font: font, maxCols: maxCols, maxRows: maxRows, currCol: currCol, currRow: currRow, backColor: color)
 
 proc scrollUp(con: var Console) =
-  con.fb.bltVideoToVideo(con.left, con.top + con.font.height, con.left, con.top, con.maxCols*con.font.width, con.maxRows*con.font.height)
+  backbufferStart = (backbufferStart + 16) mod 1024
+  for r in -16 ..< 16:
+    for c in 0 ..< 1280:
+      backbuffer[((backbufferStart + 1024 + r) mod 1024)*1280 + c] = con.backColor
   dec(con.currRow)
 
 proc write*(con: var Console, str: string, color: uint32 = DefaultForeground) =
@@ -48,7 +58,7 @@ proc write*(con: var Console, str: string, color: uint32 = DefaultForeground) =
     for yoff, row in glyph:
       for xoff in 1..8:
         if (rotateLeftBits(row, xoff) and 1) == 1:
-          con.fb[xpos + xoff - 1, ypos + yoff] = color
+          backbuffer[(((backbufferStart + ypos + yoff) mod 1024) * 1280) + xpos + xoff - 1] = color
 
     inc(con.currCol)
     if con.currCol >= con.maxCols:
@@ -57,3 +67,5 @@ proc write*(con: var Console, str: string, color: uint32 = DefaultForeground) =
 
       if con.currRow >= con.maxRows:
         scrollUp(con)
+
+  con.fb.copyBuffer(addr backbuffer, backbufferStart)
