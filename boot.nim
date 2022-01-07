@@ -9,6 +9,7 @@ import bitops
 import clib
 import cpu
 import font
+import framebuffer
 import ioapic
 import lapic
 import malloc
@@ -133,7 +134,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   loadFont()
   println("")
   println(&"PSF Font: Dina 8x16")
-  println(&"  Magic    = {dina8x16[0]:0>2x}h {dina8x16[1]:0>2x}h {dina8x16[2]:0>2x}h {dina8x16[3]:0>2x}h")
+  println(&"  Magic    = {dina8x16[0]:0>2x} {dina8x16[1]:0>2x} {dina8x16[2]:0>2x} {dina8x16[3]:0>2x}")
   println(&"  Version  = {cast[ptr uint32](addr dina8x16[4])[]}")
   println(&"  HdrSize  = {cast[ptr uint32](addr dina8x16[8])[]}")
   println(&"  Flags    = {cast[ptr uint32](addr dina8x16[12])[]}")
@@ -145,31 +146,37 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 # grey/blue background: #353d45
 # orange: #f57956
 # green: #8ebb8a
+# light-blue: #90badf
 # blue: #608aaf
 # blue-ish: #4a8e97
 # dark grey/black: #222629
 
   discard gop.setMode(gop, 14)  # 1280x1024
-  var fb = cast[ptr UncheckedArray[uint32]](gop.mode.frameBufferBase)
 
-  let fbWidth = 1280
-  let fbHeight = 1024
+  var fb = initFramebuffer(gop.mode.frameBufferBase, width=1280, height=1024)
 
   # clear background
-  for i in 0 ..< (fbWidth * fbHeight):
-    fb[i] = 0x252d35'u32
+  fb.clear(0x252d35'u32)
 
-  var pos = 10*fbWidth + 10
-  var g = 0
-  for ch in """ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz !@#$%^&*()_+~`[{]}\|;:'",<.>/?""":
-    let glyph = glyphs8x16[ch.uint8]
-    for bits in glyph:
-      for i in 1..8:
-        if (rotateLeftBits(bits, i) and 1) == 1:
-          fb[pos + i] = 0xd4dae7
-      inc(pos, fbWidth)
-    inc g
-    pos = 10*fbWidth + 10 + g*8
+  proc outString(str: string, x, y: int, color: uint32 = 0xd4dae7) =
+    var xpos = x
+    var ypos = y
+    for i, ch in str:
+      let glyph = glyphs8x16[ch.uint8]
+      for yoff, row in glyph:
+        for xoff in 1..8:
+          if (rotateLeftBits(row, xoff) and 1) == 1:
+            fb[xpos + xoff - 1, ypos + yoff] = color
+      inc(xpos, 8)
+      ypos = y
+
+
+  outString("""    _          _                    ___  ____  """, 10, 10)
+  outString("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """, 10, 26)
+  outString("""  / _ \  \ \/ / |/ _ \| '_ ` _ \  | | | \___ \ """, 10, 42)
+  outString(""" / ___ \  >  <| | (_) | | | | | | | |_| |___) |""", 10, 58)
+  outString("""/_/   \_\/_/\_\_|\___/|_| |_| |_|  \___/|____/ """, 10, 74)
+  outString("Nim is awesome!", 10, 96, 0x90badf)
 
   # discard systemTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
 
