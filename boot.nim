@@ -1,3 +1,4 @@
+import bitops
 import std/strbasics
 import std/strformat
 import std/strutils
@@ -5,8 +6,8 @@ import std/tables
 import typetraits
 
 import acpi
-import bitops
 import clib
+import console
 import cpu
 import font
 import framebuffer
@@ -143,13 +144,6 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   println(&"  Height   = {cast[ptr uint32](addr dina8x16[24])[]}")
   println(&"  Width    = {cast[ptr uint32](addr dina8x16[28])[]}")
 
-# grey/blue background: #353d45
-# orange: #f57956
-# green: #8ebb8a
-# light-blue: #90badf
-# blue: #608aaf
-# blue-ish: #4a8e97
-# dark grey/black: #222629
 
   discard gop.setMode(gop, 14)  # 1280x1024
 
@@ -158,25 +152,18 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   # clear background
   fb.clear(0x252d35'u32)
 
-  proc outString(str: string, x, y: int, color: uint32 = 0xd4dae7) =
-    var xpos = x
-    var ypos = y
-    for i, ch in str:
-      let glyph = glyphs8x16[ch.uint8]
-      for yoff, row in glyph:
-        for xoff in 1..8:
-          if (rotateLeftBits(row, xoff) and 1) == 1:
-            fb[xpos + xoff - 1, ypos + yoff] = color
-      inc(xpos, 8)
-      ypos = y
+  var fnt = loadFont16()
+  var con = initConsole(fb, left=8, top=8, font=fnt, maxCols=158, maxRows=62)
 
+  for i in 0 ..< 62:
+    con.write(&"Line {i}\n")
 
-  outString("""    _          _                    ___  ____  """, 10, 10)
-  outString("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """, 10, 26)
-  outString("""  / _ \  \ \/ / |/ _ \| '_ ` _ \  | | | \___ \ """, 10, 42)
-  outString(""" / ___ \  >  <| | (_) | | | | | | | |_| |___) |""", 10, 58)
-  outString("""/_/   \_\/_/\_\_|\___/|_| |_| |_|  \___/|____/ """, 10, 74)
-  outString("Nim is awesome!", 10, 96, 0x90badf)
+  # outString("""    _          _                    ___  ____  """, 10, 10)
+  # outString("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """, 10, 26)
+  # outString("""  / _ \  \ \/ / |/ _ \| '_ ` _ \  | | | \___ \ """, 10, 42)
+  # outString(""" / ___ \  >  <| | (_) | | | | | | | |_| |___) |""", 10, 58)
+  # outString("""/_/   \_\/_/\_\_|\___/|_| |_| |_|  \___/|____/ """, 10, 74)
+  # outString("Nim is awesome!", 10, 96, 0x90badf)
 
   # discard systemTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
 
