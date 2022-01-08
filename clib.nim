@@ -1,5 +1,7 @@
 import cpu
 
+{.compile: "libc.c".}
+
 proc memset*(p: pointer, value: cint, size: csize_t): pointer {.exportc.} =
   let pp = cast[ptr UncheckedArray[byte]](p)
   let v = cast[byte](value)
@@ -7,12 +9,12 @@ proc memset*(p: pointer, value: cint, size: csize_t): pointer {.exportc.} =
     pp[i] = v
   return p
 
-proc memcpy*(dst: pointer, src: pointer, size: csize_t): pointer {.exportc, codegenDecl: "$# $#(void * restrict dst,  const void * restrict src,  size_t size)".} =
-  let d = cast[ptr UncheckedArray[byte]](dst)
-  let s = cast[ptr UncheckedArray[byte]](src)
-  for i in 0..<size:
-    d[i] = s[i]
-  return dst
+# proc memcpy*(dst: pointer, src: pointer, size: csize_t): pointer {.exportc, codegenDecl: "$# $#(void * restrict dst,  const void * restrict src,  size_t size)".} =
+#   let d = cast[ptr UncheckedArray[byte]](dst)
+#   let s = cast[ptr UncheckedArray[byte]](src)
+#   for i in 0..<size:
+#     d[i] = s[i]
+#   return dst
 
 proc memcmp*(lhs: pointer, rhs: pointer, count: csize_t): cint {.exportc, codegenDecl: "$# $#(const void* lhs, const void* rhs, size_t count)".} =
   let l = cast[ptr UncheckedArray[byte]](lhs)

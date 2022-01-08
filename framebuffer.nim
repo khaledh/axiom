@@ -55,6 +55,9 @@ proc clear*(fb: Framebuffer, color: uint32 = 0) =
 #     inc(sy, stepY)
 #     inc(dy, stepY)
 
-proc copyBuffer*(fb: Framebuffer, buff: ptr array[1280*1024, uint32], buffStart: int) =
-    copyMem(fb.buffer, addr buff[buffStart*1280], 1280*(1024-buffStart)*4)
-    copyMem(addr fb.buffer[(1024-buffStart)*1280], buff, 1280*buffStart*4)
+proc copyBuffer*(fb: Framebuffer, buff: ptr UncheckedArray[uint32], buffStart: int) =
+    let startOffset = buffStart.uint32 * fb.width
+    let endOffset = (fb.height - buffStart.uint32) * fb.width
+
+    copyMem(fb.buffer, addr buff[startOffset], endOffset*4)
+    copyMem(addr fb.buffer[endOffset], buff, startOffset*4)

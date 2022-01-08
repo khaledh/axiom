@@ -14,6 +14,7 @@ const
   Blue* = 0x608aaf
   Blueish* = 0x4a8e97
 
+# circular buffer
 var backbuffer {.align(16).}: array[1024*1280, uint32]
 var backbufferStart: int
 
@@ -36,10 +37,14 @@ proc initConsole*(fb: Framebuffer, left, top: int, font: Font16, maxCols, maxRow
   Console(fb: fb, left: left, top: top, font: font, maxCols: maxCols, maxRows: maxRows, currCol: currCol, currRow: currRow, backColor: color)
 
 proc scrollUp(con: var Console) =
+  # move pointer down in the circular buffer to indicate the new start line
   backbufferStart = (backbufferStart + 16) mod 1024
-  for r in -16 ..< 16:
-    for c in 0 ..< 1280:
-      backbuffer[((backbufferStart + 1024 + r) mod 1024)*1280 + c] = con.backColor
+
+  # clear the last line
+  var start = ((backbufferStart + 1024) mod 1024) * 1280
+  for i in start ..< start + 16*1280:
+      backbuffer[i] = con.backColor
+
   dec(con.currRow)
 
 proc write*(con: var Console, str: string, color: uint32 = DefaultForeground) =
@@ -68,4 +73,4 @@ proc write*(con: var Console, str: string, color: uint32 = DefaultForeground) =
       if con.currRow >= con.maxRows:
         scrollUp(con)
 
-  con.fb.copyBuffer(addr backbuffer, backbufferStart)
+  con.fb.copyBuffer(cast [ptr UncheckedArray[uint32]](addr backbuffer), backbufferStart)

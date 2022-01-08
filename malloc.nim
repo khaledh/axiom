@@ -16,5 +16,5 @@ proc free*(p: pointer) {.exportc.} =
 
 proc realloc*(p: pointer, new_size: csize_t): pointer {.exportc.} =
   result = malloc(new_size)
-  discard memcpy(result, p, new_size)
+  copyMem(result, p, new_size)
   free(p)
