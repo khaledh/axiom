@@ -29,12 +29,16 @@ type
     currCol: int
     currRow: int
     backColor: uint32
+    tick: uint64
 
 proc initConsole*(fb: Framebuffer, left, top: int, font: Font16, maxCols, maxRows: int, currCol, currRow: int = 0, color: uint32 = 0): Console =
   backbufferStart = 0
   for i in 0 ..< 1024*1280:
       backbuffer[i] = color
   Console(fb: fb, left: left, top: top, font: font, maxCols: maxCols, maxRows: maxRows, currCol: currCol, currRow: currRow, backColor: color)
+
+proc flush*(con: Console) =
+  con.fb.copyBuffer(cast [ptr UncheckedArray[uint32]](addr backbuffer), backbufferStart)
 
 proc scrollUp(con: var Console) =
   # move pointer down in the circular buffer to indicate the new start line
@@ -73,4 +77,10 @@ proc write*(con: var Console, str: string, color: uint32 = DefaultForeground) =
       if con.currRow >= con.maxRows:
         scrollUp(con)
 
-  con.fb.copyBuffer(cast [ptr UncheckedArray[uint32]](addr backbuffer), backbufferStart)
+  if con.tick mod 5 == 0:
+    con.flush()
+
+  inc(con.tick)
+
+proc writeln*(con: var Console, str: string, color: uint32 = DefaultForeground) =
+  con.write(str & "\n", color)

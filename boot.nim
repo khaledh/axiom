@@ -6,6 +6,7 @@ import std/tables
 import typetraits
 
 import acpi
+import bxvbe
 import clib
 import console
 import cpu
@@ -132,6 +133,9 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     discard gop.queryMode(gop, i, addr sizeOfInfo, addr modeInfo)
     println(&"  Mode {i:>2}: {modeInfo.horizontalResolution:>4} x {modeInfo.verticalResolution:>4}")
 
+  # discard gop.setMode(gop, 14)  # 1280x1024
+  # var fb = initFramebuffer(gop.mode.frameBufferBase, width=1280, height=1024)
+
   loadFont()
   println("")
   println(&"PSF Font: Dina 8x16")
@@ -144,33 +148,37 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   println(&"  Height   = {cast[ptr uint32](addr dina8x16[24])[]}")
   println(&"  Width    = {cast[ptr uint32](addr dina8x16[28])[]}")
 
+  # # BGA (Bochs Graphics Adapter)
+  # let bgaId = bgaReadRegister(BxvbePortIndexId)
+  # println(&"BGA ID = {bgaId:0>4x}")
 
-  discard gop.setMode(gop, 14)  # 1280x1024
+  # bgaSetVideoMode(1280, 1024, 32)
 
-  var fb = initFramebuffer(gop.mode.frameBufferBase, width=1280, height=1024)
+  # let virtWidth = bgaReadRegister(BxvbePortIndexVirtWidth)
+  # let virtHeight = bgaReadRegister(BxvbePortIndexVirtHeight)
+  # println(&"BGA VirtualRes = {virtWidth}x{virtHeight}")
 
-  # clear background
-  fb.clear(0x252d35'u32)
+  # var fb = initFramebuffer(BxvbeLfbPhysicalAddress, width=1280, height=1024)
+
+  # # clear background
+  # fb.clear(0x2d363d'u32)
 
 
-  var fnt = loadFont16()
-  var con = initConsole(fb, left=8, top=16, font=fnt, maxCols=158, maxRows=62, color=0x252d35'u32)
+  # var fnt = loadFont16()
+  # var con = initConsole(fb, left=8, top=16, font=fnt, maxCols=158, maxRows=62, color=0x2d363d'u32)
 
-  for i in 0 ..< 300:
-    con.write(&"Line {i}")
-    if i < 299:
-      con.write("\n")
-
-  # outString("""    _          _                    ___  ____  """, 10, 10)
-  # outString("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """, 10, 26)
-  # outString("""  / _ \  \ \/ / |/ _ \| '_ ` _ \  | | | \___ \ """, 10, 42)
-  # outString(""" / ___ \  >  <| | (_) | | | | | | | |_| |___) |""", 10, 58)
-  # outString("""/_/   \_\/_/\_\_|\___/|_| |_| |_|  \___/|____/ """, 10, 74)
-  # outString("Nim is awesome!", 10, 96, 0x90badf)
+  # con.write("""    _          _                    ___  ____  """); con.write("\n")
+  # con.write("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """); con.write("\n")
+  # con.write("""  / _ \  \ \/ / |/ _ \| '_ ` _ \  | | | \___ \ """); con.write("\n")
+  # con.write(""" / ___ \  >  <| | (_) | | | | | | | |_| |___) |"""); con.write("\n")
+  # con.write("""/_/   \_\/_/\_\_|\___/|_| |_| |_|  \___/|____/ """); con.write("\n")
+  # con.write("\n");
+  # con.write("Nim is awesome!", 0xa0caef)
+  # con.flush()
 
   # discard systemTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
 
-  halt()
+  # halt()
 
   #############################################
   ##  CPU: CR0 register
@@ -344,10 +352,105 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     offset32: uint32
     reserved: uint32
 
+  const kbdUS = [
+    0.char,                 # 0x00
+    0x1B.char, # Esc */         # 0x01
+    '1',                    # 0x02
+    '2',                    # 0x03
+    '3',                    # 0x04
+    '4',                    # 0x05
+    '5',                    # 0x06
+    '6',                    # 0x07
+    '7',                    # 0x08
+    '8',                    # 0x09
+    '9',                    # 0x0A
+    '0',                    # 0x0B
+    '-',                    # 0x0C
+    '=',                    # 0x0D
+    '\b',                   # 0x0E
+    '\t',                   # 0x0F
+    'q',                    # 0x10
+    'w',                    # 0x11
+    'e',                    # 0x12
+    'r',                    # 0x13
+    't',                    # 0x14
+    'y',                    # 0x15
+    'u',                    # 0x16
+    'i',                    # 0x17
+    'o',                    # 0x18
+    'p',                    # 0x19
+    '[',                    # 0x1A
+    ']',                    # 0x1B
+    '\n',                   # 0x1C
+    0.char,    # Ctrl (L) */    # 0x1D
+    'a',                    # 0x1E
+    's',                    # 0x1F
+    'd',                    # 0x20
+    'f',                    # 0x21
+    'g',                    # 0x22
+    'h',                    # 0x23
+    'j',                    # 0x24
+    'k',                    # 0x25
+    'l',                    # 0x26
+    ';',                    # 0x27
+    '\'',                   # 0x28
+    '`',                    # 0x29
+    0.char,    # Shift (L) */   # 0x2A
+    '\\',                   # 0x2B
+    'z',                    # 0x2C
+    'x',                    # 0x2D
+    'c',                    # 0x2E
+    'v',                    # 0x2F
+    'b',                    # 0x30
+    'n',                    # 0x31
+    'm',                    # 0x32
+    ',',                    # 0x33
+    '.',                    # 0x34
+    '/',                    # 0x35
+    0.char,    # Shift (R) */   # 0x36
+    '*',  # Keypad */      # 0x37
+    0.char,    # Alt (L) */     # 0x38
+    ' ',                    # 0x39
+    0.char,    # Caps Lock */   # 0x3A
+    0.char,    # F1 */          # 0x3B
+    0.char,    # F2 */ # 0x3C
+    0.char,    # F3 */ # 0x3D
+    0.char,    # F4 */ # 0x3E
+    0.char,    # F5 */ # 0x3F
+    0.char,    # F6 */ # 0x40
+    0.char,    # F7 */ # 0x41
+    0.char,    # F8 */ # 0x42
+    0.char,    # F9 */ # 0x43
+    0.char,    # F10 */ # 0x44
+    0.char,    # Num Lock */ # 0x45
+    0.char,    # Scroll Lock */ # 0x46
+    '7',  # Keypad */ # 0x47
+    '8',  # Keypad */ # 0x48
+    '9',  # Keypad */ # 0x49
+    '-',  # Keypad */ # 0x4A
+    '4',  # Keypad */ # 0x4B
+    '5',  # Keypad */ # 0x4C
+    '6',  # Keypad */ # 0x4D
+    '+',  # Keypad */ # 0x4E
+    '1',  # Keypad */ # 0x4F
+    '2',  # Keypad */ # 0x50
+    '3',  # Keypad */ # 0x51
+    '0',  # Keypad */ # 0x52
+    '.',  # Keypad */ # 0x53
+    0.char, # 0x54
+    0.char, # 0x55
+    0.char, # 0x56
+    0.char,    # F11 */ # 0x57
+    0.char,    # F12 */ # 0x58
+  ]
+
   {.push stackTrace:off.}
   proc kbdIntHandler(intFrame: pointer) {.codegenDecl: "__attribute__ ((interrupt)) $# $#$#".}=
-    println("")
-    println("  ===> Key pressed <===")
+    let scanCode = portIn8(0x60)
+    # print(&"{scanCode:0>2x}")
+    if (scanCode and 0x80) == 0:
+      print(&"{kbdUS[scanCode]}")
+
     lapicWrite(LapicOffset.Eoi, 0)
   {.pop.}
 

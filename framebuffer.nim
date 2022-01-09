@@ -1,25 +1,32 @@
 type
   Framebuffer* = object
-    buffer: ptr UncheckedArray[uint32]
+    buffer0: ptr UncheckedArray[uint32]
+    buffer1: ptr UncheckedArray[uint32]
+    currentBuffer: ptr UncheckedArray[uint32]
     width: uint32
     height: uint32
     pitch: uint32
 
 proc initFramebuffer*(address: uint64, width, height: uint32, pitch: uint32 = 0): Framebuffer =
-    Framebuffer(
-        buffer: cast[ptr UncheckedArray[uint32]](address),
+    var fb = Framebuffer(
+        buffer0: cast[ptr UncheckedArray[uint32]](address),
+        buffer1: cast[ptr UncheckedArray[uint32]](address + width*height*4),
         width: width,
         height: height,
         pitch: if pitch == 0: width else: pitch
     )
+    fb.currentBuffer = fb.buffer0
+    result = fb
 
-proc `[]=`*(fb: Framebuffer, x, y: int, color: uint32) =
-    if x < fb.width.int and y < fb.height.int:
-        fb.buffer[y*fb.pitch.int + x] = color
+proc swapBuffers*(fb: var Framebuffer) =
+    if fb.currentBuffer == fb.buffer0:
+      fb.currentBuffer = fb.buffer1
+    else:
+      fb.currentBuffer = fb.buffer0
 
 proc clear*(fb: Framebuffer, color: uint32 = 0) =
   for i in 0 ..< (fb.width * fb.pitch):
-    fb.buffer[i] = color
+    fb.currentBuffer[i] = color
 
 # proc bltVideoToVideo*(fb: Framebuffer, srcX, srcY, dstX, dstY, width, height: int) =
 #   var fromX, fromY, toX, toY, stepX, stepY: int
@@ -47,7 +54,7 @@ proc clear*(fb: Framebuffer, color: uint32 = 0) =
 #   var dy = toY
 #   for i in 0 ..< height:
 #     for j in 0 ..< width:
-#       fb.buffer[dy*fb.pitch.int + dx] = fb.buffer[sy*fb.pitch.int + sx]
+#       fb.currentBuffer[dy*fb.pitch.int + dx] = fb.currentBuffer[sy*fb.pitch.int + sx]
 #       inc(sx, stepX)
 #       inc(dx, stepX)
 #     sx = fromX
@@ -56,8 +63,8 @@ proc clear*(fb: Framebuffer, color: uint32 = 0) =
 #     inc(dy, stepY)
 
 proc copyBuffer*(fb: Framebuffer, buff: ptr UncheckedArray[uint32], buffStart: int) =
-    let startOffset = buffStart.uint32 * fb.width
-    let endOffset = (fb.height - buffStart.uint32) * fb.width
+  let startOffset = buffStart.uint32 * fb.width
+  let endOffset = (fb.height - buffStart.uint32) * fb.width
 
-    copyMem(fb.buffer, addr buff[startOffset], endOffset*4)
-    copyMem(addr fb.buffer[endOffset], buff, startOffset*4)
+  copyMem(fb.currentBuffer, addr buff[startOffset], endOffset*4)
+  copyMem(addr fb.currentBuffer[endOffset], buff, startOffset*4)
