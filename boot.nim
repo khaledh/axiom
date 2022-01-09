@@ -352,104 +352,53 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     offset32: uint32
     reserved: uint32
 
-  const kbdUS = [
-    0.char,                 # 0x00
-    0x1B.char, # Esc */         # 0x01
-    '1',                    # 0x02
-    '2',                    # 0x03
-    '3',                    # 0x04
-    '4',                    # 0x05
-    '5',                    # 0x06
-    '6',                    # 0x07
-    '7',                    # 0x08
-    '8',                    # 0x09
-    '9',                    # 0x0A
-    '0',                    # 0x0B
-    '-',                    # 0x0C
-    '=',                    # 0x0D
-    '\b',                   # 0x0E
-    '\t',                   # 0x0F
-    'q',                    # 0x10
-    'w',                    # 0x11
-    'e',                    # 0x12
-    'r',                    # 0x13
-    't',                    # 0x14
-    'y',                    # 0x15
-    'u',                    # 0x16
-    'i',                    # 0x17
-    'o',                    # 0x18
-    'p',                    # 0x19
-    '[',                    # 0x1A
-    ']',                    # 0x1B
-    '\n',                   # 0x1C
-    0.char,    # Ctrl (L) */    # 0x1D
-    'a',                    # 0x1E
-    's',                    # 0x1F
-    'd',                    # 0x20
-    'f',                    # 0x21
-    'g',                    # 0x22
-    'h',                    # 0x23
-    'j',                    # 0x24
-    'k',                    # 0x25
-    'l',                    # 0x26
-    ';',                    # 0x27
-    '\'',                   # 0x28
-    '`',                    # 0x29
-    0.char,    # Shift (L) */   # 0x2A
-    '\\',                   # 0x2B
-    'z',                    # 0x2C
-    'x',                    # 0x2D
-    'c',                    # 0x2E
-    'v',                    # 0x2F
-    'b',                    # 0x30
-    'n',                    # 0x31
-    'm',                    # 0x32
-    ',',                    # 0x33
-    '.',                    # 0x34
-    '/',                    # 0x35
-    0.char,    # Shift (R) */   # 0x36
-    '*',  # Keypad */      # 0x37
-    0.char,    # Alt (L) */     # 0x38
-    ' ',                    # 0x39
-    0.char,    # Caps Lock */   # 0x3A
-    0.char,    # F1 */          # 0x3B
-    0.char,    # F2 */ # 0x3C
-    0.char,    # F3 */ # 0x3D
-    0.char,    # F4 */ # 0x3E
-    0.char,    # F5 */ # 0x3F
-    0.char,    # F6 */ # 0x40
-    0.char,    # F7 */ # 0x41
-    0.char,    # F8 */ # 0x42
-    0.char,    # F9 */ # 0x43
-    0.char,    # F10 */ # 0x44
-    0.char,    # Num Lock */ # 0x45
-    0.char,    # Scroll Lock */ # 0x46
-    '7',  # Keypad */ # 0x47
-    '8',  # Keypad */ # 0x48
-    '9',  # Keypad */ # 0x49
-    '-',  # Keypad */ # 0x4A
-    '4',  # Keypad */ # 0x4B
-    '5',  # Keypad */ # 0x4C
-    '6',  # Keypad */ # 0x4D
-    '+',  # Keypad */ # 0x4E
-    '1',  # Keypad */ # 0x4F
-    '2',  # Keypad */ # 0x50
-    '3',  # Keypad */ # 0x51
-    '0',  # Keypad */ # 0x52
-    '.',  # Keypad */ # 0x53
-    0.char, # 0x54
-    0.char, # 0x55
-    0.char, # 0x56
-    0.char,    # F11 */ # 0x57
-    0.char,    # F12 */ # 0x58
-  ]
+  const
+    kbdUs = [
+      '\0', '\x1B', '1',  '2',  '3',  '4',  '5',  '6',  # 00-07
+      '7',  '8',    '9',  '0',  '-',  '=',  '\b', '\t', # 08-0f
+      'q',  'w',    'e',  'r',  't',  'y',  'u',  'i',  # 10-17
+      'o',  'p',    '[',  ']',  '\n', '\0', 'a',  's',  # 18-1f
+      'd',  'f',    'g',  'h',  'j',  'k',  'l',  ';',  # 20-27
+      '\'', '`',    '\0', '\\', 'z',  'x',  'c',  'v',  # 28-2f
+      'b',  'n',    'm',  ',',  '.',  '/',  '\0', '*',  # 30-37
+      '\0', ' ',    '\0', '\0', '\0', '\0', '\0', '\0', # 38-3f
+      '\0', '\0',   '\0', '\0', '\0', '\0', '\0', '7',  # 40-47
+      '8',  '9',    '-',  '4',  '5',  '6',  '+',  '1',  # 48-4f
+      '2',  '3',    '0',  '.',  '\0', '\0', '\0', '\0', # 50-57
+      '\0',                                             # 58-5f
+    ]
+    kbdUsShift = [
+      '\0', '\0', '!',  '@', '#',  '$',  '%',  '^',  # 00-07
+      '&',  '*',  '(',  ')', '_',  '+',  '\0', '\0', # 08-0f
+      'Q',  'W',  'E',  'R', 'T',  'Y',  'U',  'I',  # 10-17
+      'O',  'P',  '{',  '}', '\0', '\0', 'A',  'S',  # 18-1f
+      'D',  'F',  'G',  'H', 'J',  'K',  'L',  ':',  # 20-27
+      '"',  '~',  '\0', '|', 'Z',  'X',  'C',  'V',  # 28-2f
+      'B',  'N',  'M',  '<', '>',  '?'             # 30-37
+    ]
+  var
+    shift, ctrl, alt = false
 
   {.push stackTrace:off.}
   proc kbdIntHandler(intFrame: pointer) {.codegenDecl: "__attribute__ ((interrupt)) $# $#$#".}=
-    let scanCode = portIn8(0x60)
+    var scanCode = portIn8(0x60)
     # print(&"{scanCode:0>2x}")
-    if (scanCode and 0x80) == 0:
-      print(&"{kbdUS[scanCode]}")
+    if (scanCode and 0x80) == 0:   # key press down
+      case scanCode
+        of 0x2a, 0x36: shift = true
+        of 0x1d: ctrl = true
+        of 0x38: alt = true
+        else: discard
+      let ch = if shift: kbdUsShift[scanCode] else: kbdUs[scanCode]
+      print(&"{ch}")
+    else:                          # key release
+      scanCode = scanCode and (not 0x80'u8)
+      case scanCode
+        of 0x2a, 0x36: shift = false
+        of 0x1d: ctrl = false
+        of 0x38: alt = false
+        else: discard
+  
 
     lapicWrite(LapicOffset.Eoi, 0)
   {.pop.}
