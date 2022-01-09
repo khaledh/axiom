@@ -13,6 +13,7 @@ import cpu
 import font
 import framebuffer
 import ioapic
+import keyboard
 import lapic
 import malloc
 import util
@@ -352,56 +353,14 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     offset32: uint32
     reserved: uint32
 
-  const
-    kbdUs = [
-      '\0', '\x1B', '1',  '2',  '3',  '4',  '5',  '6',  # 00-07
-      '7',  '8',    '9',  '0',  '-',  '=',  '\b', '\t', # 08-0f
-      'q',  'w',    'e',  'r',  't',  'y',  'u',  'i',  # 10-17
-      'o',  'p',    '[',  ']',  '\n', '\0', 'a',  's',  # 18-1f
-      'd',  'f',    'g',  'h',  'j',  'k',  'l',  ';',  # 20-27
-      '\'', '`',    '\0', '\\', 'z',  'x',  'c',  'v',  # 28-2f
-      'b',  'n',    'm',  ',',  '.',  '/',  '\0', '*',  # 30-37
-      '\0', ' ',    '\0', '\0', '\0', '\0', '\0', '\0', # 38-3f
-      '\0', '\0',   '\0', '\0', '\0', '\0', '\0', '7',  # 40-47
-      '8',  '9',    '-',  '4',  '5',  '6',  '+',  '1',  # 48-4f
-      '2',  '3',    '0',  '.',  '\0', '\0', '\0', '\0', # 50-57
-      '\0',                                             # 58-5f
-    ]
-    kbdUsShift = [
-      '\0', '\0', '!',  '@', '#',  '$',  '%',  '^',  # 00-07
-      '&',  '*',  '(',  ')', '_',  '+',  '\0', '\0', # 08-0f
-      'Q',  'W',  'E',  'R', 'T',  'Y',  'U',  'I',  # 10-17
-      'O',  'P',  '{',  '}', '\0', '\0', 'A',  'S',  # 18-1f
-      'D',  'F',  'G',  'H', 'J',  'K',  'L',  ':',  # 20-27
-      '"',  '~',  '\0', '|', 'Z',  'X',  'C',  'V',  # 28-2f
-      'B',  'N',  'M',  '<', '>',  '?'             # 30-37
-    ]
-  var
-    shift, ctrl, alt = false
+  proc keyHandler(evt: KeyEvent) =
+    if evt.eventType == KeyDown and evt.ch != '\0':
+      if evt.ch == '\n':
+        println("")
+      else:
+        print(&"{evt.ch}")
 
-  {.push stackTrace:off.}
-  proc kbdIntHandler(intFrame: pointer) {.codegenDecl: "__attribute__ ((interrupt)) $# $#$#".}=
-    var scanCode = portIn8(0x60)
-    # print(&"{scanCode:0>2x}")
-    if (scanCode and 0x80) == 0:   # key press down
-      case scanCode
-        of 0x2a, 0x36: shift = true
-        of 0x1d: ctrl = true
-        of 0x38: alt = true
-        else: discard
-      let ch = if shift: kbdUsShift[scanCode] else: kbdUs[scanCode]
-      print(&"{ch}")
-    else:                          # key release
-      scanCode = scanCode and (not 0x80'u8)
-      case scanCode
-        of 0x2a, 0x36: shift = false
-        of 0x1d: ctrl = false
-        of 0x38: alt = false
-        else: discard
-  
-
-    lapicWrite(LapicOffset.Eoi, 0)
-  {.pop.}
+  initKeyboard(keyHandler)
 
   println("")
   println("  Interrupt Descriptors")
@@ -412,7 +371,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
     if i == 0x33:  # Keyboard
       println("  Setting keyboard interrupt handler (0x33)")
-      let kbdIntHandlerAddr = cast[uint64](kbdIntHandler)
+      let kbdIntHandlerAddr = cast[uint64](kbdInterruptHandler)
       desc.offset00 = uint16(kbdIntHandlerAddr and 0xffff'u64)
       desc.offset16 = uint16(kbdIntHandlerAddr shr 16 and 0xffff'u64)
       desc.offset32 = uint32(kbdIntHandlerAddr shr 32)
@@ -902,11 +861,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
   # shutdown()
   # halt()
-
-  while true:
-    asm """
-      hlt
-    """
+  idle()
 
 
 #############################################
