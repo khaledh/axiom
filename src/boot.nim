@@ -7,7 +7,6 @@ import typetraits
 
 import acpi
 import bxvbe
-import clib
 import console
 import cpu
 import font
@@ -15,9 +14,10 @@ import framebuffer
 import ioapic
 import keyboard
 import lapic
-import malloc
-import util
 import uefi
+import lib/clib
+import lib/malloc
+import lib/guid
 
 
 var sysTable: ptr EfiSystemTable

@@ -1,4 +1,4 @@
-import cpu
+import ../cpu
 
 {.compile: "libc.c".}
 

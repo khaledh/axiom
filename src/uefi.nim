@@ -1,4 +1,4 @@
-import util
+import lib/guid
 
 type
   EfiStatus* = distinct uint
