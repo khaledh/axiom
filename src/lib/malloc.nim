@@ -1,5 +1,3 @@
-import clib
-
 var
   heap*: array[0..64*1024, float64]
   heapBumpPtr*: int

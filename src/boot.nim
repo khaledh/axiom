@@ -15,10 +15,9 @@ import ioapic
 import keyboard
 import lapic
 import uefi
-import lib/clib
+import lib/libc
 import lib/malloc
 import lib/guid
-
 
 var sysTable: ptr EfiSystemTable
 
