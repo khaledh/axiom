@@ -1,4 +1,9 @@
+import std/strformat
+
 import ../cpu
+import ../debug
+
+{.compile: "libc.c".}
 
 proc memset*(p: pointer, value: cint, size: csize_t): pointer {.exportc.} =
   let pp = cast[ptr UncheckedArray[byte]](p)
@@ -34,6 +39,13 @@ proc memcmp*(lhs: pointer, rhs: pointer, count: csize_t): cint
       return cint(l[i] - r[i])
   return 0
 
+proc strlen*(str: cstring): cint {.exportc.} =
+  let s = cast[ptr UncheckedArray[byte]](str)
+  var len = 0
+  while s[len] != 0:
+    inc(len)
+  result = len.cint
+
 proc strstr*(str: cstring, substr: cstring): cstring
     {.exportc, codegenDecl: "$# $#(const char* str, const char* substr)".} =
   let s = cast[ptr UncheckedArray[byte]](str)
@@ -51,14 +63,15 @@ proc strstr*(str: cstring, substr: cstring): cstring
 proc exit*(code: cint) {.exportc.} =
   halt()
 
+type
+  CFile {.importc: "FILE", header: "<stdio.h>", incompleteStruct.} = object
+  CFilePtr* = ptr CFile ## The type representing a file handle.
 
-###########################################
-# misc libc stuff that may be needed
+proc fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): csize_t 
+    {.exportc, codegenDecl: "$# $#(const void * restrict buf,  size_t size,  size_t n,  FILE * restrict f)".} =
+  let p = cast[ptr UncheckedArray[char]](buf)
+  for i in 0..(n*size):
+    print(&"{p[i]}")
 
-# type
-#   CFile {.importc: "FILE", header: "<stdio.h>", incompleteStruct.} = object
-#   CFilePtr* = ptr CFile ## The type representing a file handle.
-
-# proc fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): csize_t 
-#   {.exportc, codegenDecl: "$# $#(const void * restrict,  size_t,  size_t,  FILE * restrict)".} = 0
-# proc fflush*(f: CFilePtr): cint {.exportc.} = 0
+proc fflush*(f: CFilePtr): cint {.exportc.} =
+  discard

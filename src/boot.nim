@@ -9,6 +9,7 @@ import acpi
 import bxvbe
 import console
 import cpu
+import debug
 import font
 import framebuffer
 import ioapic
@@ -21,20 +22,13 @@ import lib/guid
 
 var sysTable: ptr EfiSystemTable
 
-proc printws(wstr: WideCString) =
-  discard sysTable.conOut.outputString(sysTable.conOut, wstr[0].addr)
-
-proc print(str: string) =
-  discard sysTable.conOut.outputString(sysTable.conOut, (newWideCString(str).toWideCString)[0].addr)
-
-proc println(str: string) =
-  print(str & "\r\n")
 
 proc printError(msg: string) =
   println(msg)
 
-unhandledExceptionHook = proc (e: ref Exception) = discard
-errorMessageWriter = printError
+proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =
+  printError(e.msg)
+
 
 proc dumpFirmwareVersion() =
   let uefiMajor = sysTable.header.revision shr 16
@@ -72,9 +66,13 @@ proc dumpMemoryMap(): uint =
 
 
 proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.exportc.} =
-
   sysTable = systemTable
   heapBumpPtr = cast[int](addr heap)
+
+  initDebug(sysTable.conOut)
+
+  errorMessageWriter = printError
+  unhandledExceptionHook = handleUnhandledException
 
   let GOP_GUID = parseGuid("9042a9de-23dc-4a38-fb96-7aded080516a")
   var igop: pointer
