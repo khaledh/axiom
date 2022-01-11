@@ -6,7 +6,7 @@ type
     revision*: uint8
     rsdtAddress*: uint32
     length*: uint32
-    xsdtAddress*: uint64
+    xsdtAddress*: pointer
     extendedChecksum*: uint8
     reserved*: array[3, uint8]
 

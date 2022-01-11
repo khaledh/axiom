@@ -1,4 +1,4 @@
-import uefi
+import uefitypes
 
 var conOut: ptr SimpleTextOutputInterface
 

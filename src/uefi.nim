@@ -1,206 +1,46 @@
+import std/strformat
+import std/tables
+
 import lib/guid
+import debug
+import uefitypes
 
-type
-  EfiStatus* = distinct uint
+const
+  EfiLzmaCustomDecompressGuid*   = parseGuid("ee4e5898-3914-4259-6e9d-dc7bd79403cf")
+  EfiDxeServicesTableGuid*       = parseGuid("05ad34ba-6f02-4214-2e95-4da0398e2bb9")
+  EfiHobListGuid*                = parseGuid("7739f24c-93d7-11d4-3a9a-0090273fc14d")
+  EfiMemoryTypeInfoGuid*         = parseGuid("4c19049f-4137-4dd3-109c-8b97a83ffdfa")
+  EfiDebugImageInfoTableGuid*    = parseGuid("49152e77-1ada-4764-a2b7-7afefed95e8b")
+  EfiMemoryStatusCodeRecordGuid* = parseGuid("060cc026-4c0d-4dda-418f-595fef00a502")
+  EfiSmbiosTableGuid*            = parseGuid("eb9d2d31-2d88-11d3-169a-0090273fc14d")
+  EfiAcpi1TableGuid*             = parseGuid("eb9d2d30-2d88-11d3-169a-0090273fc14d")
+  EfiAcpi2TableGuid*             = parseGuid("8868e871-e4f1-11d3-22bc-0080c73c8881")
+  EfiMemoryAttributesTableGuid*  = parseGuid("dcfa911d-26eb-469f-20a2-38b7dc461220")
 
-  EfiHandle* = pointer
+let efiGuids = {
+  EfiLzmaCustomDecompressGuid   : ("LZMA_CUSTOM_DECOMPRESS_GUID", "LZMA Custom Decompress"),
+  EfiDxeServicesTableGuid       : ("DXE_SERVICES_TABLE_GUID", "DXE Services Table"),
+  EfiHobListGuid                : ("HOB_LIST_GUID", "HOB (Hand-Off Block) List"),
+  EfiMemoryTypeInfoGuid         : ("EFI_MEMORY_TYPE_INFORMATION_GUID", "Memory Type Information"),
+  EfiDebugImageInfoTableGuid    : ("EFI_DEBUG_IMAGE_INFO_TABLE_GUID", "Debug Image Info Table"),
+  EfiMemoryStatusCodeRecordGuid : ("MEMORY_STATUS_CODE_RECORD_GUID", "Memory Status Code Record"),
+  EfiSmbiosTableGuid            : ("SMBIOS_TABLE_GUID", "SMBIOS Table"),
+  EfiAcpi1TableGuid             : ("ACPI_TABLE_GUID", "ACPI 1.0 Table"),
+  EfiAcpi2TableGuid             : ("EFI_ACPI_TABLE_GUID", "ACPI 2.0+ Table"),
+  EfiMemoryAttributesTableGuid  : ("EFI_MEMORY_ATTRIBUTES_TABLE_GUID", "Memory Attributes Table"),
+}.toTable
 
-  EfiTableHeader* = object
-    signature*: uint64
-    revision*: uint32
-    headerSize*: uint32
-    crc32*: uint32
-    reserved*: uint32
+proc getUefiConfigTables*(st: ptr EfiSystemTable): Table[Guid, pointer] =
+  for i in 0 ..< st.numTableEntries:
+    let entry = st.configTable[i]
+    result[entry.vendorGuid] = entry.vendorTable
 
-  EfiConfigurationTableEntry* = object
-    vendorGuid*: Guid
-    vendorTable*: pointer
+proc dumpUefiConfigTables*(st: ptr EfiSystemTable) =
+  let configTables = getUefiConfigTables(st)
 
-  EfiSystemTable* = object
-    header*: EfiTableHeader
-    firmwareVendor*: WideCString
-    firmwareRevision*: uint32
-    consoleInHandle*: EfiHandle
-    conIn*: pointer
-    consoleOutHandle*: EfiHandle
-    conOut*: ptr SimpleTextOutputInterface
-    standardErrorHandle*: EfiHandle
-    stdErr*: ptr SimpleTextOutputInterface
-    runtimeServices*: pointer
-    bootServices*: ptr EfiBootServices
-    numTableEntries*: uint
-    configTable*: ptr UncheckedArray[EfiConfigurationTableEntry]
-
-  SimpleTextOutputInterface* = object
-    reset*: TextReset
-    outputString*: TextOutputString
-    testString*: TextTestString
-    queryMode*: TextQueryMode
-    setMode*: TextSetMode
-    setAttribute*: TextSetAttribute
-    clearScreen*: TextClearScreen
-    setCursorPos*: TextSetCursorPosition
-    enableCursor*: TextEnableCursor
-    mode*: ptr SimpleTextOutputMode
-
-  TextReset = proc (this: ptr SimpleTextOutputInterface, extendedVerification: bool): EfiStatus {.cdecl.}
-  TextOutputString = proc (this: ptr SimpleTextOutputInterface, str: ptr Utf16Char): EfiStatus {.cdecl, gcsafe, locks: 0, tags: [], raises: [].}
-  TextTestString = proc (this: ptr SimpleTextOutputInterface, str: openArray[Utf16Char]): EfiStatus {.cdecl.}
-  TextQueryMode = proc (this: ptr SimpleTextOutputInterface, modeNum: uint, cols, rows: ptr uint): EfiStatus {.cdecl.}
-  TextSetMode = proc (this: ptr SimpleTextOutputInterface, modeNum: uint): EfiStatus {.cdecl.}
-  TextSetAttribute = proc (this: ptr SimpleTextOutputInterface, attribute: uint): EfiStatus {.cdecl.}
-  TextClearScreen = proc (this: ptr SimpleTextOutputInterface): EfiStatus {.cdecl.}
-  TextSetCursorPosition = proc (this: ptr SimpleTextOutputInterface, cols, rows: uint): EfiStatus {.cdecl.}
-  TextEnableCursor = proc (this: ptr SimpleTextOutputInterface, enable: bool): EfiStatus {.cdecl.}
-
-  SimpleTextOutputMode* = object
-    maxMode*: int32
-    currentMode*: int32
-    attribute*: int32
-    cursorCol*: int32
-    cursorRow*: int32
-    cursorVisible*: bool
-
-  EfiBootServices = object
-    hdr*: EfiTableHeader
-    # task priority services
-    raiseTpl*: pointer
-    restoreTpl*: pointer
-    # memory services
-    allocatePages*: pointer
-    freePages*: pointer
-    getMemoryMap*: GetMemoryMap
-    allocatePool*: AllocatePool
-    freePool*: pointer
-    # event & timer services
-    createEvent*: pointer
-    setTimer*: pointer
-    waitForEvent*: pointer
-    signalEvent*: pointer
-    closeEvent*: pointer
-    checkEvent*: pointer
-    # protocol handler services
-    installProtocolInterface*: pointer
-    reinstallProtocolInterface*: pointer
-    uninstallProtocolInterface*: pointer
-    handleProtocol*: pointer
-    reserved*: pointer
-    registerProtocolNotify*: pointer
-    locateHandle*: pointer
-    locateDevicePath*: pointer
-    installConfigurationTable*: pointer
-    # image services
-    loadImage*: pointer
-    startImage*: pointer
-    exit*: pointer
-    unloadImage*: pointer
-    exitBootServices*: ExitBootServices
-    # misc services
-    getNextMonotonicCount*: pointer
-    stall*: pointer
-    setWatchdogTimer*: pointer
-    # driver support services
-    connectController*: pointer
-    disconnectController*: pointer
-    # open and close protocol services
-    openProtocol*: pointer
-    closeProtocol*: pointer
-    openProtocolInformation*: pointer
-    # library services
-    protocolsPerHandle*: pointer
-    locateHandleBuffer*: pointer
-    locateProtocol*: LocateProtocol
-    installMultipleProtocolInterfaces*: pointer
-    uninstallMultipleProtocolInterfaces*: pointer
-    # 32-bit CRC services
-    calculateCrc32*: pointer
-    # misc services
-    copyMem*: pointer
-    setMem*: pointer
-    createEventEx*: pointer
-
-  ExitBootServices* = proc (imageHandler: EfiHandle, mapKey: uint): EfiStatus {.cdecl.}
-  LocateProtocol* = proc (protocol: ptr Guid, registration: pointer, `interface`: ptr pointer): EfiStatus {.cdecl.}
-
-  #[
-    Memory Management
-  ]#
-
-  AllocatePool* = proc (poolType: EfiMemoryType, size: uint, buffer: ptr pointer): EfiStatus {.cdecl.}
-
-  GetMemoryMap* = proc (
-    memoryMapSize: ptr uint,
-    memoryMap: ptr UncheckedArray[EfiMemoryDescriptor],
-    mapKey: ptr uint,
-    descriptorSize: ptr uint,
-    descriptorVersion: ptr uint32
-  ): EfiStatus {.cdecl.}
-
-  EfiMemoryType* = enum
-    mtReservedMemoryType      = "Reserved"
-    mtLoaderCode              = "Loader Code"
-    mtLoaderData              = "Loader Data"
-    mtBootServicesCode        = "Boot Services Code"
-    mtBootServicesData        = "Boot Services Data"
-    mtRuntimeServicesCode     = "Runtime Services Code"
-    mtRuntimeServicesData     = "Runtime Services Data"
-    mtConventionalMemory      = "Conventional Memory"
-    mtUnusableMemory          = "Unusable Memory"
-    mtACPIReclaimMemory       = "ACPI Reclaim Memory"
-    mtACPIMemoryNVS           = "ACPI Memory NVS"
-    mtMemoryMappedIO          = "Memory Mapped IO"
-    mtMemoryMappedIOPortSpace = "Memory Mapped IO Port Space"
-    mtPalCode                 = "PAL Code"
-    mtPersistentMemory        = "Persistent Memory"
-    mtMaxMemoryType
-
-  EfiMemoryDescriptor* = object
-    `type`*: EfiMemoryType
-    physicalStart*: EfiPhysicalAddress
-    virtualStart*: EfiVirtualAddress
-    numberOfPages*: uint64
-    attribute*: uint64
-  EfiPhysicalAddress* = uint64
-  EfiVirtualAddress* = uint64
-
-  #[
-    Graphics Output Protocol
-  ]#
-
-  EfiGraphicsOutputProtocol* = object
-    queryMode*: GopQueryMode
-    setMode*: GopSetMode
-    blt*: pointer
-    mode*: ptr GopMode
-
-  GopMode* = object
-    maxMode*: uint32
-    currentMode*: uint32
-    info*: ptr GopModeInfo
-    sizeOfInfo*: uint
-    frameBufferBase*: EfiPhysicalAddress
-    frameBufferSize*: uint
-
-  GopPixelBitmask* = object
-    redMask*: uint32
-    greenMask*: uint32
-    blueMask*: uint32
-    reservedMask*: uint32
-
-  GopPixelFormat* = enum
-    gpfPixelRedGreenBlueReserved8BitPerColor,
-    gpfPixelBlueGreenRedReserved8BitPerColor,
-    gpfPixelBitMask,
-    gpfPixelBltOnly,
-    gpfPixelFormatMax
-
-  GopModeInfo* = object
-    version*: uint32
-    horizontalResolution*: uint32
-    verticalResolution*: uint32
-    pixelFormat*: GopPixelFormat
-    pixelInfo*: GopPixelBitmask
-    pixelsPerScanLine*: uint32
-
-  GopQueryMode* = proc (this: ptr EfiGraphicsOutputProtocol, modeNumber: uint32, sizeOfInfo: ptr uint, info: ptr ptr GopModeInfo): EfiStatus {.cdecl.}
-  GopSetMode* = proc (this: ptr EfiGraphicsOutputProtocol, modeNumber: uint32): EfiStatus {.cdecl.}
+  println("")
+  println("UEFI Configuration Table")
+  for guid, p in configTables.pairs:
+    print(&"  {$guid}")
+    if efiGuids.contains(guid):
+      print(&"  {efiGuids[guid][1]}")
