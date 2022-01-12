@@ -6,6 +6,7 @@ import std/tables
 import typetraits
 
 import acpi
+import acpi/fadt
 import acpi/madt
 import acpi/xsdt
 import bxvbe
@@ -144,22 +145,20 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     println("RSDP")
     println(&"  Revision: {rsdp.revision:x}")
 
-
     let xsdt = parseXsdt(rsdp.xsdtAddress)
     dumpXsdt(xsdt)
 
     var hdr: ptr TableDescriptionHeader
 
+    hdr = xsdt.entries.getOrDefault(['F', 'A', 'C', 'P'])
+    if not isNil(hdr):
+      let fadt = parseFadt(cast[pointer](hdr))
+      dumpFadt(fadt)
+
     hdr = xsdt.entries.getOrDefault(['A', 'P', 'I', 'C'])
     if not isNil(hdr):
       let madt = cast[ptr MADT](hdr)
       dumpMadt(madt)
-
-    hdr = xsdt.entries.getOrDefault(['F', 'A', 'C', 'P'])
-    if not isNil(hdr):
-      discard
-      # let fadt = cast[ptr FADT](hdr)
-      # dumpFadt(fadt)
 
   #############################################
   ##  APICs
@@ -190,6 +189,6 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   #############################################
   ##  Shutdown
 
-  # shutdown()
+  shutdown()
   # halt()
-  idle()
+  # idle()

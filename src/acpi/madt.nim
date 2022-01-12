@@ -83,7 +83,7 @@ type
 
 proc dumpMadt*(madt: ptr MADT) =
   println("")
-  println("MADT")
+  println("MADT (Multiple APIC Description Table")
   println(&"  Local APIC Address: {madt.lapicAddress:0>8x}")
   println(&"  Flags:              {madt.flags}")
   println("")
