@@ -22,6 +22,7 @@ import ioapic
 import keyboard
 import lapic
 import paging
+import pci
 import physmem
 import uefi
 import uefitypes
@@ -167,6 +168,11 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   dumpLapic()
 
   dumpIoapic()
+
+  #############################################
+  ##  PCI
+
+  dumpPciConfig()
 
   #############################################
   ##  Exit UEFI Boot Services
