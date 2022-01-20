@@ -9,6 +9,7 @@ import acpi
 import acpi/fadt
 import acpi/madt
 import acpi/xsdt
+import ahci
 import bxvbe
 import console
 import cpu
@@ -173,6 +174,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   ##  PCI
 
   dumpPciConfig()
+  dumpAhci(bus=0, dev=0x1f, fn=2)
 
   #############################################
   ##  Exit UEFI Boot Services
@@ -195,6 +197,6 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   #############################################
   ##  Shutdown
 
-  shutdown()
-  # halt()
+  # shutdown()
+  halt()
   # idle()
