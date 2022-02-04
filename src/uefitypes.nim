@@ -97,7 +97,7 @@ type
     exitBootServices*: ExitBootServices
     # misc services
     getNextMonotonicCount*: pointer
-    stall*: pointer
+    stall*: Stall
     setWatchdogTimer*: pointer
     # driver support services
     connectController*: pointer
@@ -119,6 +119,7 @@ type
     setMem*: pointer
     createEventEx*: pointer
 
+  Stall* = proc (microseconds: uint): EfiStatus {.cdecl.}
   ExitBootServices* = proc (imageHandler: EfiHandle, mapKey: uint): EfiStatus {.cdecl.}
   LocateProtocol* = proc (protocol: ptr Guid, registration: pointer, `interface`: ptr pointer): EfiStatus {.cdecl.}
 

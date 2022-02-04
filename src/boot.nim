@@ -174,7 +174,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   ##  PCI
 
   dumpPciConfig()
-  dumpAhci(bus=0, dev=0x1f, fn=2)
+  dumpAhci(bus=0, dev=0x1f, fn=2, sysTable.bootServices)
 
   #############################################
   ##  Exit UEFI Boot Services
@@ -197,6 +197,6 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   #############################################
   ##  Shutdown
 
-  # shutdown()
-  halt()
+  shutdown()
+  # halt()
   # idle()

@@ -1,33 +1,35 @@
 import std/strformat
 
+import ata
 import debug
 import pci
+import uefitypes
 
 type
   # Generic Host Control Registers
 
   HbaCap {.packed.} = object
-    np    {.bitsize:  4.} : uint32  # Number of Ports
-    sxs   {.bitsize:  1.} : uint32  # Supports External SATA
-    ems   {.bitsize:  1.} : uint32  # Enclosure Management Supported
-    cccs  {.bitsize:  1.} : uint32  # Command Completion Coalescing Supported
-    ncs   {.bitsize:  1.} : uint32  # Number of Command Slots
-    psc   {.bitsize:  1.} : uint32  # Partial State Capable
-    ssc   {.bitsize:  1.} : uint32  # Slumber State Capable
-    pmd   {.bitsize:  1.} : uint32  # PIO Multiple DRQ Block
-    fbss  {.bitsize:  1.} : uint32  # FIS-based Switching Supported
-    spm   {.bitsize:  1.} : uint32  # Supports Port Multiplier
-    sam   {.bitsize:  1.} : uint32  # Supports AHCI Mode only
-    rsv   {.bitsize:  1.} : uint32  # Reserved
-    iss   {.bitsize:  4.} : uint32  # Interface Speed Support
-    sclo  {.bitsize:  1.} : uint32  # Supports Command List Override
-    sal   {.bitsize:  1.} : uint32  # Supports Activity LED
-    salp  {.bitsize:  1.} : uint32  # Supports Agressive Link Power Management
-    sss   {.bitsize:  1.} : uint32  # Supports Staggered Spin-up
-    smps  {.bitsize:  1.} : uint32  # Supports Mechanical Presence Switch
-    ssntf {.bitsize:  1.} : uint32  # Supports SNotification Register
-    sncq  {.bitsize:  1.} : uint32  # Supports Native Command Queuing
-    s64a  {.bitsize:  1.} : uint32  # Supports 64-bit Addressing
+    np    {.bitsize:  4.} : uint8   # Number of Ports
+    sxs   {.bitsize:  1.} : uint8   # Supports External SATA
+    ems   {.bitsize:  1.} : uint8   # Enclosure Management Supported
+    cccs  {.bitsize:  1.} : uint8   # Command Completion Coalescing Supported
+    ncs   {.bitsize:  1.} : uint8   # Number of Command Slots
+    psc   {.bitsize:  1.} : uint8   # Partial State Capable
+    ssc   {.bitsize:  1.} : uint8   # Slumber State Capable
+    pmd   {.bitsize:  1.} : uint8   # PIO Multiple DRQ Block
+    fbss  {.bitsize:  1.} : uint8   # FIS-based Switching Supported
+    spm   {.bitsize:  1.} : uint8   # Supports Port Multiplier
+    sam   {.bitsize:  1.} : uint8   # Supports AHCI Mode only
+    rsv   {.bitsize:  1.} : uint8   # Reserved
+    iss   {.bitsize:  4.} : uint8   # Interface Speed Support
+    sclo  {.bitsize:  1.} : uint8   # Supports Command List Override
+    sal   {.bitsize:  1.} : uint8   # Supports Activity LED
+    salp  {.bitsize:  1.} : uint8   # Supports Agressive Link Power Management
+    sss   {.bitsize:  1.} : uint8   # Supports Staggered Spin-up
+    smps  {.bitsize:  1.} : uint8   # Supports Mechanical Presence Switch
+    ssntf {.bitsize:  1.} : uint8   # Supports SNotification Register
+    sncq  {.bitsize:  1.} : uint8   # Supports Native Command Queuing
+    s64a  {.bitsize:  1.} : uint8   # Supports 64-bit Addressing
 
   GlobalHbaControl {.packed.} = object
     hr    {.bitsize:  1.} : uint32  # HBA Reset
@@ -93,28 +95,28 @@ type
     cpde  {.bitsize:  1.} : uint32  # Cold Port Detect Enable
 
   PortCMD {.packed.} = object
-    st    {.bitsize:  1.} : uint32  # Start
-    sud   {.bitsize:  1.} : uint32  # Spin-Up Device
-    pod   {.bitsize:  1.} : uint32  # Power On Device
-    clo   {.bitsize:  1.} : uint32  # Command List Override
-    fre   {.bitsize:  1.} : uint32  # FIS Receive Enable
-    ccs   {.bitsize:  1.} : uint32  # Current Command Slot
-    mpss  {.bitsize:  1.} : uint32  # Mechanical Presence Switch State
-    fr    {.bitsize:  1.} : uint32  # FIS Receive Running
-    cr    {.bitsize:  1.} : uint32  # Command List Running
-    cps   {.bitsize:  1.} : uint32  # Cold Presence State
-    pma   {.bitsize:  1.} : uint32  # Port Multiplier Attached
-    hpcp  {.bitsize:  1.} : uint32  # Hot Plug Capable Port
-    mpsp  {.bitsize:  1.} : uint32  # Mechanical Presence Switch Attached to Port
-    cpd   {.bitsize:  1.} : uint32  # Cold Presence Detection
-    esp   {.bitsize:  1.} : uint32  # External SATA Port
-    fbscp {.bitsize:  1.} : uint32  # FIS-based Switching Capable Port
-    apste {.bitsize:  1.} : uint32  # Automatic Partial to Slumber Transitions Enabled
-    atapi {.bitsize:  1.} : uint32  # Device is ATAPI
-    dlae  {.bitsize:  1.} : uint32  # Drive LED on ATAPI Enable
-    alpe  {.bitsize:  1.} : uint32  # Aggressive Link Power Management Enable
-    asp   {.bitsize:  1.} : uint32  # Agressive Slumber / Partial
-    icc   {.bitsize:  4.} : uint32  # Interface Communication Control
+    st    {.bitsize:  1.} : uint8   # Start
+    sud   {.bitsize:  1.} : uint8   # Spin-Up Device
+    pod   {.bitsize:  1.} : uint8   # Power On Device
+    clo   {.bitsize:  1.} : uint8   # Command List Override
+    fre   {.bitsize:  1.} : uint8   # FIS Receive Enable
+    ccs   {.bitsize:  5.} : uint8   # Current Command Slot
+    mpss  {.bitsize:  1.} : uint8   # Mechanical Presence Switch State
+    fr    {.bitsize:  1.} : uint8   # FIS Receive Running
+    cr    {.bitsize:  1.} : uint8   # Command List Running
+    cps   {.bitsize:  1.} : uint8   # Cold Presence State
+    pma   {.bitsize:  1.} : uint8   # Port Multiplier Attached
+    hpcp  {.bitsize:  1.} : uint8   # Hot Plug Capable Port
+    mpsp  {.bitsize:  1.} : uint8   # Mechanical Presence Switch Attached to Port
+    cpd   {.bitsize:  1.} : uint8   # Cold Presence Detection
+    esp   {.bitsize:  1.} : uint8   # External SATA Port
+    fbscp {.bitsize:  1.} : uint8   # FIS-based Switching Capable Port
+    apste {.bitsize:  1.} : uint8   # Automatic Partial to Slumber Transitions Enabled
+    atapi {.bitsize:  1.} : uint8   # Device is ATAPI
+    dlae  {.bitsize:  1.} : uint8   # Drive LED on ATAPI Enable
+    alpe  {.bitsize:  1.} : uint8   # Aggressive Link Power Management Enable
+    asp   {.bitsize:  1.} : uint8   # Agressive Slumber / Partial
+    icc   {.bitsize:  4.} : uint8   # Interface Communication Control
 
   PortTFD {.packed.} = object
     sts   {.bitsize:  8.} : uint32  # Status
@@ -142,7 +144,7 @@ type
     err   {.bitsize: 16.} : uint32  # Error
     diag  {.bitsize: 16.} : uint32  # Diagnostics
 
-  PortSACT {.packed.} = object    # Port SATA Error (SCR3: SActive)
+  PortSACT {.packed.} = object    # Port SATA Active (SCR3: SActive)
     ds    {.bitsize: 32.} : uint32  # Device Status
 
   PortCI {.packed.} = object      # Port Command Issue
@@ -193,8 +195,59 @@ type
     rsv2   : array[10, uint32]
     vs     : array[4, uint32]  # Vendor Specific
 
+  # Command Header
 
-proc dumpAhci*(bus, dev, fn: uint8) =
+  CommandHeader {.packed.} = object
+    cfl   {.bitsize:  5.} : uint32  # Command FIS Length
+    a     {.bitsize:  1.} : uint32  # ATAPI
+    w     {.bitsize:  1.} : uint32  # Write
+    p     {.bitsize:  1.} : uint32  # Prefetchable
+    r     {.bitsize:  1.} : uint32  # Reset
+    b     {.bitsize:  1.} : uint32  # BIST
+    c     {.bitsize:  1.} : uint32  # Clear Busy upon R_OK
+    rsv0  {.bitsize:  1.} : uint32  # Reserved
+    pmp   {.bitsize:  4.} : uint32  # Port Multiplier Port
+    prdtl {.bitsize: 16.} : uint32  # Physical Region Descriptor Table Length
+    prdbc                 : uint32  # Physical Region Descriptor Byte Count
+    ctba                  : uint32  # Command Table Descriptor Base Address
+    ctbau                 : uint32  # Command Table Descriptor Base Address Upper 32-bits
+    rsv1                  : array[4, uint32]
+
+  CommandTable {.packed.} = object
+    cfis: array[64, uint8]  # Command FIS (up to 64 bytes)
+    acmd: array[16, uint8]  # ATAPI Command (12 or 16 bytes)
+    rsvd: array[48, uint8]  # Reserved
+    prdt: array[01, PRD]   # Physical Region Descriptor Table
+  PRD {.packed.} = object
+    dba   {.bitsize: 32.} : uint32  # Data Base Address
+    dbau  {.bitsize: 32.} : uint32  # Data Base Address Upper 32-bits
+    rsv1  {.bitsize: 32.} : uint32  # Reserved
+    dbc   {.bitsize: 22.} : uint32  # Data Byte Count (max 4MB)
+    rsv2  {.bitsize:  9.} : uint32  # Reserved
+    i     {.bitsize:  1.} : uint32  # Interrupt on Completion
+
+  FisRegisterH2D {.packed.} = object
+    fisType                    : uint8  # FIS Type
+    pmPort     {.bitsize:  4.} : uint8   # PM Port
+    rsv0       {.bitsize:  3.} : uint8   # Reserved
+    c          {.bitsize:  1.} : uint8   # 1 = Command, 0 = Device Control
+    command                    : uint8   # Command
+    features00                 : uint8   # Features(7:0)
+    lba00                      : uint8   # LBA(07:00)
+    lba08                      : uint8   # LBA(15:08)
+    lba16                      : uint8   # LBA(23:16)
+    device                     : uint8   # Device
+    lba24                      : uint8   # LBA(31:24)
+    lba32                      : uint8   # LBA(39:32)
+    lba40                      : uint8   # LBA(47:40)
+    features08                 : uint8   # Features(15:8)
+    count00                    : uint8   # Count(07:00)
+    count08                    : uint8   # Count(15:08)
+    icc                        : uint8   # Isochronous Command Completion
+    control                    : uint8   # Control
+    rsv1                       : uint32  # Reserved
+
+proc dumpAhci*(bus, dev, fn: uint8, bs: ptr EfiBootServices) =
   println("")
   println("AHCI")
   println("")
@@ -238,23 +291,122 @@ proc dumpAhci*(bus, dev, fn: uint8) =
 
   # Ports
 
-  var portOffset = 0x100'u32
-  let portRegs = cast[ptr PortRegisters](abar + portOffset)
-  println(&"  Port 0 Registers")
-  println(&"    CLB    = {portRegs.clb.clb:0>8x}h")
-  println(&"    CLBU   = {portRegs.clbu.clbu:0>8x}h")
-  println(&"    FB     = {portRegs.fb.fb:0>8x}h")
-  println(&"    FBU    = {portRegs.fbu.fbu:0>8x}h")
-  println(&"    IS     = {portRegs.is}")
-  println(&"    IE     = {portRegs.ie}")
-  println(&"    CMD    = {portRegs.cmd}")
-  println(&"    TFD    = {portRegs.tfd}")
-  println(&"    SIG    = {portRegs.sig.sig:0>8x}h")
-  println(&"    SSTS   = {portRegs.ssts}")
-  println(&"    SCTL   = {portRegs.sctl}")
-  println(&"    SERR   = {portRegs.serr}")
-  println(&"    SACT   = {portRegs.sact}")
-  println(&"    CI     = {portRegs.ci}")
-  println(&"    SNTF   = {portRegs.sntf}")
-  println(&"    FBS    = {portRegs.fbs}")
-  println(&"    DEVSLP = {portRegs.devslp}")
+  let startingPortOffset = 0x100'u32
+  for i in [0, 2]:
+    var portOffset = startingPortOffset + (i.uint32 * 0x80)
+    let portRegs = cast[ptr PortRegisters](abar + portOffset)
+
+    # portRegs.sctl.det = 1
+    # var x = 0
+    # for i in 0 .. 10000:
+    #   inc(x)
+    # portRegs.sctl.det = 0
+
+    println("")
+    println(&"  Port {i} Registers")
+    println(&"    CLB    = {portRegs.clb.clb:0>8x}h")
+    println(&"    CLBU   = {portRegs.clbu.clbu:0>8x}h")
+    println(&"    FB     = {portRegs.fb.fb:0>8x}h")
+    println(&"    FBU    = {portRegs.fbu.fbu:0>8x}h")
+    println(&"    IS     = {portRegs.is}")
+    println(&"    IE     = {portRegs.ie}")
+    println(&"    CMD    = {portRegs.cmd}")
+    println(&"    TFD    = sts:{portRegs.tfd.sts:0>8b}b, err:{portRegs.tfd.err:0>8b}b")
+    println(&"    SIG    = {portRegs.sig.sig:0>8x}h")
+    println(&"    SSTS   = {portRegs.ssts}")
+    println(&"    SCTL   = {portRegs.sctl}")
+    println(&"    SERR   = {portRegs.serr}")
+    println(&"    SACT   = {portRegs.sact.ds:0>32b}b")
+    println(&"    CI     = {portRegs.ci.ci:0>32b}b")
+    println(&"    SNTF   = {portRegs.sntf.pmn:0>16b}b")
+    println(&"    FBS    = {portRegs.fbs}")
+    println(&"    DEVSLP = {portRegs.devslp}")
+
+
+    if portRegs.ssts.det == 3:  # port has a device attached
+      # identify device
+
+      var ident: array[256, uint16]
+
+      var cmdCode: uint8 =  0xEC  # IDENTIFY DEVICE
+      if portRegs.sig.sig == 0xeb140101'u32:
+        cmdCode = 0xA1            # IDENTIFY PACKET DEVICE
+
+      var fis = FisRegisterH2D(
+        fisType: 0x27,  # RegisterH2D
+        c: 1,           # Command
+        command: cmdCode,
+      )
+
+      var cmdTable = CommandTable(
+        cfis: cast[array[64, byte]](fis),
+        prdt: [PRD(
+          dba: cast[uint32](addr ident),
+          dbc: sizeof(ident) - 1,
+          i: 1,
+        )]
+      )
+
+      let clb64: uint64 = portRegs.clb.clb or (portRegs.clbu.clbu.uint64 shl 32)
+      let cmdHeaderPtr = cast[ptr CommandHeader](clb64)
+      cmdHeaderPtr[] = CommandHeader(
+        cfl: 5,
+        prdtl: 1,
+        ctba: cast[uint32](addr cmdTable),
+      )
+
+      portRegs.is = cast[PortIS](0xffffffff'u32)
+      println(&"  IS      = {portRegs.is}")
+
+      portRegs.cmd.st = 1
+      portRegs.cmd.fre = 1
+      println(&"  CMD     = {portRegs.cmd}")
+
+      println(&"  TFD.sts = {portRegs.tfd.sts:0>8b}b")
+
+      portRegs.serr = cast[PortSERR](0xffffffff'u32)
+      println(&"  SERR    = {portRegs.serr}")
+
+      portRegs.ci.ci = 1
+
+      println(&"  IS      = {portRegs.is}")
+      println(&"  CMD     = {portRegs.cmd}")
+      println(&"  TFD.sts = {portRegs.tfd.sts:0>8b}b")
+      println(&"  CI      = {portRegs.ci.ci:0>32b}b")
+      println(&"  SERR    = {portRegs.serr}")
+
+      for i in 0 .. 81:
+        println(&"  IDENTIFY[{i:0>2}] = {ident[i]:0>4x}h")
+
+      let idData = cast[IdentifyDeviceData](ident)
+      println(&"  Model number:          {idData.modelNo}")
+      println(&"  Serial number:         {idData.serialNo}")
+      println(&"  FW revision:           {idData.firmwareRevision}")
+      println(&"  Multiple Count:        {idData.multipleCount}")
+      println(&"  Cap DMA:               {idData.capDma}")
+      println(&"  Cap LBA:               {idData.capLba}")
+      println(&"  Total Sectors:         {idData.totalSectors}")
+      println(&"  Multiword DMA0:        {idData.multiwordDma0Support}")
+      println(&"  Multiword DMA1:        {idData.multiwordDma1Support}")
+      println(&"  Multiword DMA2:        {idData.multiwordDma2Support}")
+      println(&"  PIO Mode 3/4:          {idData.pioMode34Support:0>2b}b")
+      println(&"  ATA/ATAPI-5:           {idData.ata5}")
+      println(&"  ATA/ATAPI-6:           {idData.ata6}")
+      println(&"  ATA/ATAPI-7:           {idData.ata7}")
+      println(&"  ATA8-ACS:              {idData.ata8acs}")
+      println(&"  ACS-2:                 {idData.acs2}")
+      println(&"  ACS-3:                 {idData.acs3}")
+      println(&"  ACS-4:                 {idData.acs4}")
+      println(&"  Minor Version:         {idData.minorVersion:0>4x}h")
+      println(&"  Max Queue Depth:       {idData.maxQueueDepth}")
+      println(&"  SATA Gen1 Speed:       {idData.sataGen1}")
+      println(&"  SATA Gen2 Speed:       {idData.sataGen2}")
+      println(&"  SATA Gen3 Speed:       {idData.sataGen3}")
+      println(&"  SATA NCQ:              {idData.sataNcq}")
+      println(&"  SATA Host IPM:         {idData.sataHostIpm}")
+      println(&"  SATA Phy Evt Counters: {idData.sataPhyEventCounters}")
+      println(&"  SATA NCQ Unload:       {idData.sataNcqUnload}")
+      println(&"  SATA NCQ Pri:          {idData.sataNcqPriority}")
+      println(&"  SATA Host Auto P2S:    {idData.sataHostAutoP2S}")
+      println(&"  SATA Dev Auto P2S:     {idData.sataDeviceAutoP2S}")
+      
