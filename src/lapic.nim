@@ -185,3 +185,17 @@ proc dumpLapic*() =
   if lapicVersion.maxLvtEntry >= 5:
     let therm = cast[LvtRegister](lapicRead(0x330))
     println(&"    Therm  {therm.vector:0>2x}      {therm.deliveryMode: <12}  {therm.deliveryStatus}                                                    {therm.mask}")
+
+
+proc lapicSetTimer*() =
+  lapicWrite(LapicOffset.TimerDivideConfig, 0b1001) # Divide by 64
+  lapicWrite(LapicOffset.TimerInitialCount, 4375000)
+  lapicWrite(LapicOffset.LvtTimer, 0x20 or (0x01 shl 17))
+
+
+{.push stackTrace:off.}
+proc timerInterruptHandler*(intFrame: pointer) {.codegenDecl: "__attribute__ ((interrupt)) $# $#$#".}=
+  print(".")
+
+  lapicWrite(LapicOffset.Eoi, 0)
+{.pop.}

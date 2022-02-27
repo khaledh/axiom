@@ -375,8 +375,8 @@ proc dumpAhci*(bus, dev, fn: uint8, bs: ptr EfiBootServices) =
       println(&"  CI      = {portRegs.ci.ci:0>32b}b")
       println(&"  SERR    = {portRegs.serr}")
 
-      for i in 0 .. 81:
-        println(&"  IDENTIFY[{i:0>2}] = {ident[i]:0>4x}h")
+      # for i in 0 .. 81:
+      #   println(&"  IDENTIFY[{i:0>2}] = {ident[i]:0>4x}h")
 
       let idData = cast[IdentifyDeviceData](ident)
       println(&"  Model number:          {idData.modelNo}")

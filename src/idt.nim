@@ -1,6 +1,7 @@
 import std/strformat
 
 import keyboard
+import lapic
 import debug
 
 type
@@ -50,6 +51,13 @@ proc dumpIdt*() =
     let desc = cast[ptr InterruptDescriptor](idt_desc.base + i.uint64 * 16)
     if (desc.present == 0):
       continue
+
+    if i == 0x20:  # Timer
+      println("  Setting timer interrupt handler (0x20)")
+      let timerIntHandlerAddr = cast[uint64](timerInterruptHandler)
+      desc.offset00 = uint16(timerIntHandlerAddr and 0xffff'u64)
+      desc.offset16 = uint16(timerIntHandlerAddr shr 16 and 0xffff'u64)
+      desc.offset32 = uint32(timerIntHandlerAddr shr 32)
 
     if i == 0x33:  # Keyboard
       println("  Setting keyboard interrupt handler (0x33)")
