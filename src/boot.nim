@@ -193,6 +193,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   # portOut8(Pic1DataPort, 0xff);
   # portOut8(Pic2DataPort, 0xff);
 
+  initTasks()
   lapicSetTimer()
 
   #############################################
