@@ -22,6 +22,8 @@ type
     limit: uint16
     base: uint64
 
+var
+  idtDesc: IdtDescriptor
 
 proc keyHandler(evt: KeyEvent) =
   if evt.eventType == KeyDown and evt.ch != '\0':
@@ -31,11 +33,9 @@ proc keyHandler(evt: KeyEvent) =
       print(&"{evt.ch}")
 
 proc dumpIdt*() =
-  var idt_desc: IdtDescriptor
-
   asm """
     sidt %0
-    :"=m"(`idt_desc`)
+    :"=m"(`idtDesc`)
   """
 
   println("")
@@ -86,3 +86,10 @@ proc dumpIdt*() =
 
     elif i == 1:
       println("  ...")
+
+proc setInterruptHandler*(vector: uint8, handler: proc (intFrame: pointer) {.cdecl.}) =
+  let intDesc = cast[ptr InterruptDescriptor](idtDesc.base + vector.uint64 * 16)
+  let handlerAddr = cast[uint64](handler)
+  intDesc.offset00 = uint16(handlerAddr and 0xffff'u64)
+  intDesc.offset16 = uint16(handlerAddr shr 16 and 0xffff'u64)
+  intDesc.offset32 = uint32(handlerAddr shr 32)

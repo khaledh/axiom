@@ -187,35 +187,7 @@ proc dumpLapic*() =
     println(&"    Therm  {therm.vector:0>2x}      {therm.deliveryMode: <12}  {therm.deliveryStatus}                                                    {therm.mask}")
 
 
-proc lapicSetTimer*() =
+proc lapicSetTimer*(vector: uint8) =
   lapicWrite(LapicOffset.TimerDivideConfig, 0b1001) # Divide by 64
   lapicWrite(LapicOffset.TimerInitialCount, 4375000)
-  lapicWrite(LapicOffset.LvtTimer, 0x20 or (0x01 shl 17))
-
-
-#################################
-
-{.push stackTrace:off.}
-proc timerInterruptHandler*(intFrame: pointer) {.codegenDecl: "__attribute__ ((interrupt)) $# $#$#".} =
-  println("")
-  println("timer interrupt: start")
-
-  # tasks[currentTask]()
-  # currentTask = 1 - currentTask
-
-  # asm """
-  #   cli
-  #   hlt
-  # """
-
-  # let rsp = addr stack0[StackSize - 8]
-  # println(&"rsp = {cast[uint64](rsp):x}")
-  # println(&"rsp[] = {rsp[]:x}")
-
-  # schedule()
-
-  lapicWrite(LapicOffset.Eoi, 0)
-
-  println("timer interrupt: end")
-  println("")
-{.pop.}
+  lapicWrite(LapicOffset.LvtTimer, vector.uint32 or (0x01 shl 17))

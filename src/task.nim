@@ -84,7 +84,7 @@ proc resumeThread*() {.asmNoStackFrame, exportc.} =
     ret
   """
 
-proc schedule() =
+proc schedule*() =
   let curr = currThreadId
   let next = (curr + 1) mod len(threads)
 
@@ -93,27 +93,21 @@ proc schedule() =
 
 proc thread1() {.cdecl.} =
   while true:
-    for x in 0..<10:
-      print(".")
-      for i in 0..250000:
-        asm "pause"
-    schedule()
+    print(".")
+    for i in 0..250000:
+      asm "pause"
 
 proc thread2() {.cdecl.} =
   while true:
-    for x in 0..<10:
-      print("x")
-      for i in 0..250000:
-        asm "pause"
-    schedule()
+    print("x")
+    for i in 0..250000:
+      asm "pause"
 
 proc thread3() {.cdecl.} =
   while true:
-    for x in 0..<10:
-      print("o")
-      for i in 0..250000:
-        asm "pause"
-    schedule()
+    print("o")
+    for i in 0..250000:
+      asm "pause"
 
 proc kernelThread(function: ThreadFunc) =
   function()
@@ -126,21 +120,8 @@ proc initThread(function: ThreadFunc): Thread =
   result.rsp = cast[uint64](result.stack) + StackSize - sizeof(SwitchStack).uint64
 
   var ss = cast[ptr SwitchStack](result.rsp)
-  ss.r15 = 0
-  ss.r14 = 0
-  ss.r13 = 0
-  ss.r12 = 0
-  ss.r11 = 0
-  ss.r10 = 0
-  ss.r9  = 0
-  ss.r8  = 0
-  ss.rdi = 0
-  ss.rsi = 0
-  ss.rbp = 0
-  ss.rbx = 0
-  ss.rdx = 0
+  zeroMem(ss, sizeof(SwitchStack))
   ss.rcx = cast[uint64](function)
-  ss.rax = 0
   ss.rip = cast[pointer](kernelThread)
 
 proc runThread(thread: Thread) =

@@ -26,6 +26,7 @@ import paging
 import pci
 import physmem
 import task
+import timer
 import uefi
 import uefitypes
 import uefi/gop
@@ -194,13 +195,18 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   # portOut8(Pic1DataPort, 0xff);
   # portOut8(Pic2DataPort, 0xff);
 
+  initTimer()
   initThreads()
-  # initTasks()
-  # lapicSetTimer()
+
+  # enable interrupts
+  asm """
+    sti
+  """
+
+  idle()
 
   #############################################
   ##  Shutdown
 
   # shutdown()
   # halt()
-  idle()
