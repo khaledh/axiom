@@ -1,5 +1,6 @@
 import std/strformat
 
+import cpu
 import keyboard
 import lapic
 import debug

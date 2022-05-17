@@ -52,9 +52,11 @@ proc portIn32*(port: uint16): uint32 =
   CPU State
 ]#
 
-proc idle*() {.inline.} =
+proc idle*() {.cdecl.} =
   while true:
+    print("(i)")
     asm """
+      sti
       hlt
     """
 

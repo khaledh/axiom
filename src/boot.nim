@@ -3,6 +3,7 @@ import std/strbasics
 import std/strformat
 import std/strutils
 import std/tables
+import std/strformat
 import typetraits
 
 import acpi
@@ -42,6 +43,28 @@ proc printError(msg: string) =
 
 proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =
   printError(e.msg)
+
+
+proc thread1() {.cdecl.} =
+  # while true:
+  for i in 0..<20:
+    print(".")
+    for i in 0..250000:
+      asm "pause"
+
+proc thread2() {.cdecl.} =
+  # while true:
+  for i in 0..<20:
+    print("o")
+    for i in 0..250000:
+      asm "pause"
+
+proc thread3() {.cdecl.} =
+  # while true:
+  for i in 0..<20:
+    print("-")
+    for i in 0..250000:
+      asm "pause"
 
 proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.exportc.} =
   sysTable = systemTable
@@ -187,23 +210,34 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   ##  Setup interrupts
 
   # let's disable the PIC
-  # const
-  #   Pic1DataPort = 0x21
-  #   Pic2DataPort = 0xA1
+  const
+    Pic1DataPort = 0x21
+    Pic2DataPort = 0xA1
 
   # # mask all interrupts
-  # portOut8(Pic1DataPort, 0xff);
-  # portOut8(Pic2DataPort, 0xff);
+  portOut8(Pic1DataPort, 0xff);
+  portOut8(Pic2DataPort, 0xff);
 
-  initTimer()
+  println("")
+
   initThreads()
 
-  # enable interrupts
-  asm """
-    sti
-  """
+  let t0 = createThread(idle, ThreadPriority.low)
+  let t1 = createThread(thread1)
+  let t2 = createThread(thread2)
+  # let t3 = createThread(thread3)
 
-  idle()
+  t0.startThread()
+  t1.startThread()
+  t2.startThread()
+  # t3.startThread()
+
+  # asm "cli"
+  initTimer()
+  # asm "cli"
+  # idle()
+
+  jumpToThread(t0)
 
   #############################################
   ##  Shutdown
