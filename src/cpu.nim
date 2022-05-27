@@ -56,7 +56,6 @@ proc idle*() {.cdecl.} =
   while true:
     print("(i)")
     asm """
-      sti
       hlt
     """
 
@@ -65,6 +64,12 @@ proc halt*() {.inline.} =
     cli
     hlt
   """
+
+proc enableInterrupts*() {.inline.} =
+  asm "sti"
+
+proc disableInterrupts*() {.inline.} =
+  asm "cli"
 
 proc shutdown*() {.inline.} =
   portOut16(0x604, 0x2000)

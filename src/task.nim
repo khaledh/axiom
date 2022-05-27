@@ -184,12 +184,11 @@ proc schedule*() =
 #   thread.prev.next = thread.next
 #   thread.next.prev = thread.prev
 
-
 proc kernelThread(function: ThreadFunc) =
   # println("starting thread")
   function()
 
-  asm "cli"
+  disableInterrupts()
 
   if thCurr.next == thCurr:
     println("Halt")

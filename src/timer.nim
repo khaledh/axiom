@@ -8,29 +8,22 @@ var
   ticks: uint64
 
 proc thread3() {.cdecl.} =
-  # while true:
-  for i in 0..<20:
+  for i in 0..<40:
     print("-")
     for i in 0..250000:
       asm "pause"
 
+proc thread4() {.cdecl.} =
+  for i in 0..<20:
+    print("x")
+    for i in 0..250000:
+      asm "pause"
 
-{.push stackTrace:off.}
-proc timerInterruptHandler*(intFrame: pointer) {.cdecl, codegenDecl: "__attribute__ ((interrupt)) $# $#$#".} =
-  # halt()
+proc timerInterruptHandler*(intFrame: pointer)
+    {.cdecl, codegenDecl: "__attribute__ ((interrupt)) $# $#$#".} =
+
   print("(t)")
   inc(ticks)
-  # println("\ntimer")
-  # dumpThreads()
-#   println("timer interrupt: start")
-
-  # tasks[currentTask]()
-  # currentTask = 1 - currentTask
-
-  # asm """
-  #   cli
-  #   hlt
-  # """
 
   # let rsp = addr stack0[StackSize - 8]
   # println(&"rsp = {cast[uint64](rsp):x}")
@@ -38,16 +31,13 @@ proc timerInterruptHandler*(intFrame: pointer) {.cdecl, codegenDecl: "__attribut
 
   lapicWrite(LapicOffset.Eoi, 0)
 
-  if ticks == 30:
-    let t3 = createThread(thread3)
-    t3.startThread()
+  if ticks == 20:
+    createThread(thread3).startThread()
 
+  if ticks == 22:
+    createThread(thread4).startThread()
 
   schedule()
-
-#   println("timer interrupt: end")
-#   println("")
-{.pop.}
 
 proc initTimer*() =
   ticks = 0

@@ -20,6 +20,7 @@ import font
 import framebuffer
 import gdt
 import idt
+import interrupt
 import ioapic
 import keyboard
 import lapic
@@ -232,12 +233,18 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   t2.startThread()
   # t3.startThread()
 
-  # asm "cli"
   initTimer()
-  # asm "cli"
-  # idle()
 
   jumpToThread(t0)
+
+
+  # setInterruptHandler(0, isr00)
+  # asm """
+  #   mov rcx, 0
+  #   div rcx
+  # """
+
+  # idle()
 
   #############################################
   ##  Shutdown
