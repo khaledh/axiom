@@ -1,8 +1,8 @@
 import std/strformat
 import std/tables
 
+import console
 import cpu
-import debug
 
 const
   PciClassCode = {
@@ -184,8 +184,8 @@ proc dumpPciDeviceFunction(bus, dev, fn: uint8) =
 
   let desc = PciClassCode.getOrDefault((baseClass.uint8, subClass.uint8, progIF.uint8), "")
 
-  print(&"  pci {bus:0>2x}:{dev:0>2x}.{fn} -> {vendorId:0>4x}:{deviceId:0>4x} ({baseClass:0>2x}h,{subClass:0>2x}h,{progIF:0>2x}h)")
-  print(&"  {desc}, interrupt: pin({intPin}) line({intLine})")
+  write(&"  pci {bus:0>2x}:{dev:0>2x}.{fn} -> {vendorId:0>4x}:{deviceId:0>4x} ({baseClass:0>2x}h,{subClass:0>2x}h,{progIF:0>2x}h)")
+  write(&"  {desc}, interrupt: pin({intPin}) line({intLine})")
 
   var
     capOffset = pciConfigRead16(bus, dev, fn, 0x34).uint8
@@ -193,18 +193,18 @@ proc dumpPciDeviceFunction(bus, dev, fn: uint8) =
     nextCapOffset: uint8
 
   if capOffset != 0:
-    print(", capabilities:")
+    write(", capabilities:")
     while capOffset != 0:
       (capValue, nextCapOffset) = pciNextCapability(bus, dev, fn, capOffset)
-      print(&" {capValue:0>2x}={cast[PciCapability](capValue)}")
+      write(&" {capValue:0>2x}={cast[PciCapability](capValue)}")
       if capValue == 0x12: # Sata Data-Index Configuration
         let revision = pciConfigRead16(bus, dev, fn, capOffset + 2)
-        print(&" revision={(revision shr 4) and 0xf}.{revision and 0xf}")
+        write(&" revision={(revision shr 4) and 0xf}.{revision and 0xf}")
         let satacr1 = pciConfigRead16(bus, dev, fn, capOffset + 4)
-        print(&" barloc={satacr1 and 0xf:0>4b}b, barofst={(satacr1 shr 4) and 0xfffff:0>5x}h")
+        write(&" barloc={satacr1 and 0xf:0>4b}b, barofst={(satacr1 shr 4) and 0xfffff:0>5x}h")
       capOffset = nextCapOffset
 
-  println("")
+  writeln("")
 
 proc dumpPciDevice(bus, dev: uint8) =
   let vendorId = pciConfigRead16(bus, dev, 0, 0)
@@ -214,7 +214,7 @@ proc dumpPciDevice(bus, dev: uint8) =
   let headerType = pciConfigRead16(bus, dev, 0, 0xe)
   let isMultiFunction = (headerType and 0x80) shr 7
 
-  println("")
+  writeln("")
 
   dumpPciDeviceFunction(bus, dev, 0)
   if isMultiFunction == 1:
@@ -225,8 +225,8 @@ proc dumpPciDevice(bus, dev: uint8) =
       dumpPciDeviceFunction(bus, dev, f)
 
 proc dumpPciConfig*() =
-  println("")
-  println("PCI Configuration")
+  writeln("")
+  writeln("PCI Configuration")
 
   dumpPciDevice(0, 0)
 

@@ -1,7 +1,7 @@
 import std/strformat
 
+import console
 import cpu
-import debug
 
 const
   StackSize = 512
@@ -97,27 +97,28 @@ proc resumeThread*() {.asmNoStackFrame, exportc.} =
     pop     rcx
     pop     rax
 
+    sti
     ret
   """
 
 proc dumpThreads*() =
   # for i in 0..<len(threads):
   var thTemp = thHead
-  println(&"id={thTemp.id}, addr={cast[uint64](thTemp):x}h, state={thTemp.state}, state={cast[uint64](thTemp.state):x}h")
+  writeln(&"id={thTemp.id}, addr={cast[uint64](thTemp):x}h, state={thTemp.state}, state={cast[uint64](thTemp.state):x}h")
   thTemp = thTemp.next
 
   while thTemp != thHead:
-    println(&"id={thTemp.id}, addr={cast[uint64](thTemp):x}h, state={thTemp.state}, state={cast[uint64](thTemp.state):x}h")
+    writeln(&"id={thTemp.id}, addr={cast[uint64](thTemp):x}h, state={thTemp.state}, state={cast[uint64](thTemp.state):x}h")
     thTemp = thTemp.next
 
 proc jumpToThread*(thread: Thread) {.cdecl.} =
-  # println("\njumpToThread()")
+  # writeln("\njumpToThread()")
 
   thCurr = thread
   thCurr.state = tsRunning
 
   # dumpThreads()
-  # println(&"thCurr.id = {thCurr.id}, thCurr @ {cast[uint64](thCurr):x}")
+  # writeln(&"thCurr.id = {thCurr.id}, thCurr @ {cast[uint64](thCurr):x}")
   asm """
     mov rsp, %0
     jmp resumeThread
@@ -126,11 +127,11 @@ proc jumpToThread*(thread: Thread) {.cdecl.} =
   """
 
 proc schedule*() =
-  println("(s)")
+  # writeln("(s)")
   # dumpThreads()
 
 
-  # println(&"thCurr.id: {thCurr.id:x}h, thCurr @ {cast[uint64](thCurr):x}")
+  # writeln(&"thCurr.id: {thCurr.id:x}h, thCurr @ {cast[uint64](thCurr):x}")
 
   var thNext: Thread = thCurr
   var maxPriority =
@@ -140,21 +141,21 @@ proc schedule*() =
       ThreadPriority.low
 
   # var nextId = (thCurr.id + 1) mod len(threads).uint64
-  # println(&"(thCurr.id) = {(thCurr.id)}")
-  # println(&"(thCurr.id + 1) = {(thCurr.id + 1)}")
-  # println(&"(thCurr.id + 1) mod len(threads).uint64 = {(thCurr.id + 1) mod len(threads).uint64}")
-  # println(&"len(threads): {len(threads)}")
+  # writeln(&"(thCurr.id) = {(thCurr.id)}")
+  # writeln(&"(thCurr.id + 1) = {(thCurr.id + 1)}")
+  # writeln(&"(thCurr.id + 1) mod len(threads).uint64 = {(thCurr.id + 1) mod len(threads).uint64}")
+  # writeln(&"len(threads): {len(threads)}")
 
   var thTemp = thCurr.next
   while thTemp.id != thCurr.id:
-    # println(&"thTemp.id: {thTemp.id}, thTemp.state: {thTemp.state}")
+    # writeln(&"thTemp.id: {thTemp.id}, thTemp.state: {thTemp.state}")
     if thTemp.state == tsReady and thTemp.priority >= maxPriority:
-      # println(&"new max: {thTemp.id}, pri={thTemp.priority}")
+      # writeln(&"new max: {thTemp.id}, pri={thTemp.priority}")
       thNext = thTemp
       maxPriority = thTemp.priority
     thTemp = thTemp.next
 
-  # println(&"=> thNext.id: {thNext.id}, thNext.state: {thNext.state}")
+  # writeln(&"=> thNext.id: {thNext.id}, thNext.state: {thNext.state}")
 
   # if thCurr.state == tsTerminated:
   #   halt()
@@ -185,25 +186,25 @@ proc schedule*() =
 #   thread.next.prev = thread.prev
 
 proc kernelThread(function: ThreadFunc) =
-  # println("starting thread")
+  # writeln("starting thread")
   function()
 
   disableInterrupts()
 
   if thCurr.next == thCurr:
-    println("Halt")
+    writeln("Halt")
     halt()
 
   # let thTemp = thCurr
   # thCurr = thCurr.prev
   # terminateThread(thTemp)
   thCurr.state = tsTerminated
-  print("(k)")
+  write("(k)")
   # halt()
   # thCurr.state = tsTerminated
-  # println(&"thCurr.id: {thCurr.id}, thCurr.state: {thCurr.state}")
+  # writeln(&"thCurr.id: {thCurr.id}, thCurr.state: {thCurr.state}")
 
-  # println(&"thread {thCurr.id} terminated")
+  # writeln(&"thread {thCurr.id} terminated")
   schedule()
 
 proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0): Thread =
@@ -224,7 +225,7 @@ proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0): Thread =
   zeroMem(ss, sizeof(SwitchStack))
   ss.rcx = cast[uint64](function)
   ss.rip = cast[uint64](kernelThread)
-  # println(&"kernelThread @ {cast[uint64](kernelThread):x}")
+  # writeln(&"kernelThread @ {cast[uint64](kernelThread):x}")
 
   # threads[thNew.id] = thNew
   inc(nextAvailableId)
@@ -244,8 +245,8 @@ proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0): Thread =
 
 
 proc startThread*(thread: Thread) =
-  # println("\nstartThread()")
-  # println(&"setting thread[{thread.id}] to ready")
+  # writeln("\nstartThread()")
+  # writeln(&"setting thread[{thread.id}] to ready")
   thread.state = tsReady
 
   # dumpThreads()

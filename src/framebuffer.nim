@@ -25,8 +25,9 @@ proc swapBuffers*(fb: var Framebuffer) =
       fb.currentBuffer = fb.buffer0
 
 proc clear*(fb: Framebuffer, color: uint32 = 0) =
-  for i in 0 ..< (fb.width * fb.pitch):
-    fb.currentBuffer[i] = color
+  for i in 0 ..< fb.height:
+    for j in 0 ..< fb.width:
+      fb.currentBuffer[i * fb.pitch + j] = color
 
 # proc bltVideoToVideo*(fb: Framebuffer, srcX, srcY, dstX, dstY, width, height: int) =
 #   var fromX, fromY, toX, toY, stepX, stepY: int
@@ -62,9 +63,27 @@ proc clear*(fb: Framebuffer, color: uint32 = 0) =
 #     inc(sy, stepY)
 #     inc(dy, stepY)
 
+proc rect*(fb: Framebuffer, x1, y1, width, height, color: uint32) =
+  for x in x1 ..< x1 + width:
+    fb.currentBuffer[y1 * fb.pitch + x] = color
+    fb.currentBuffer[(y1 + height - 1) * fb.pitch + x] = color
+
+  for y in y1 ..< y1 + height:
+    fb.currentBuffer[y * fb.pitch + x1] = color
+    fb.currentBuffer[y * fb.pitch + (x1 + width - 1)] = color
+
 proc copyBuffer*(fb: Framebuffer, buff: ptr UncheckedArray[uint32], buffStart: int) =
   let startOffset = buffStart.uint32 * fb.width
   let endOffset = (fb.height - buffStart.uint32) * fb.width
 
   copyMem(fb.currentBuffer, addr buff[startOffset], endOffset*4)
   copyMem(addr fb.currentBuffer[endOffset], buff, startOffset*4)
+
+  # orange border
+  # fb.rect(0, 0, (1280 - 1), (1024 - 1), 0xff8c00)
+  # fb.rect(1, 1, (1280 - 3), (1024 - 3), 0xff8c00)
+  # fb.rect(2, 2, (1280 - 5), (1024 - 5), 0xff8c00)
+  # fb.rect(3, 3, (1280 - 7), (1024 - 7), 0xff8c00)
+
+proc bitBlt*(fb: Framebuffer) =
+  discard

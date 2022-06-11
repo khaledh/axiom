@@ -1,6 +1,6 @@
 import std/strformat
 
-import debug
+import console
 import uefitypes
 
 proc dumpFirmwareVersion*(sysTable: ptr EfiSystemTable) =
@@ -9,7 +9,7 @@ proc dumpFirmwareVersion*(sysTable: ptr EfiSystemTable) =
   let fwMajor = sysTable.firmwareRevision shr 16
   let fwMinor = sysTable.firmwareRevision and 0xffff
   let vendor = sysTable.firmwareVendor
-  println("Firmware Version")
-  print(&"  UEFI {uefiMajor}.{uefiMinor} (")
-  printws(vendor)
-  println(&", {fwMajor}.{fwMinor})")
+  writeln("Firmware Version")
+  write(&"  UEFI {uefiMajor}.{uefiMinor} (")
+  write($vendor)
+  writeln(&", {fwMajor}.{fwMinor})")

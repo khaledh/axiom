@@ -1,6 +1,6 @@
 import std/strformat
 
-import debug
+import console
 
 type
   SegmentDescriptor {.packed.} = object
@@ -30,20 +30,20 @@ proc dumpGdt*() =
     :"=m"(`gdt_desc`)
   """
 
-  println("")
-  println("Global Descritpor Table")
-  println(&"  GDT Base  = {gdt_desc.base:0>16x}h")
-  println(&"  GDT Limit = {gdt_desc.limit}")
+  writeln("")
+  writeln("GDT (Global Descritpor Table)")
+  writeln(&"  GDT Base  = {gdt_desc.base:0>16x}h")
+  writeln(&"  GDT Limit = {gdt_desc.limit}")
 
 
-  println("")
-  println("  Segment Descriptors")
+  writeln("")
+  writeln("  Segment Descriptors")
   for i in 0..8:
     let desc = cast[ptr SegmentDescriptor](gdt_desc.base + i.uint64 * 8)
-    print(&"  [{i}] ")
+    write(&"  [{i}] ")
     # print(&"{cast[uint64](desc[])}h ")
     if cast[uint64](desc[]) == 0:
-      println("Null Descriptor")
+      writeln("Null Descriptor")
       continue
   
     var segType = newStringOfCap(64)
@@ -64,7 +64,7 @@ proc dumpGdt*() =
       segType &= (if (desc.type.uint8 and 0x1) == 0x1: "1" else: "0")
       segType &= "}  "
 
-    println(
+    writeln(
       &"Selector={i * 8:0>2x}  " &
       &"P={desc.p}  " &
       &"S={desc.s}  " &

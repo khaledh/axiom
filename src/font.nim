@@ -1,8 +1,6 @@
 import std/base64
 import std/strformat
 
-import debug
-
 type
   Font16* = object
     width*: int
@@ -108,15 +106,3 @@ proc loadFont16*(): Font16 =
   dina8x16 = cast[seq[byte]](dina8x16Base64.decode())
   let glyphs8x16 = cast[ptr UncheckedArray[array[16, byte]]](addr dina8x16[32])
   Font16(width: 8, height: 16, glyphs: glyphs8x16)
-
-proc dumpFont*() =
-  println("")
-  println(&"PSF Font: Dina 8x16")
-  println(&"  Magic    = {dina8x16[0]:0>2x} {dina8x16[1]:0>2x} {dina8x16[2]:0>2x} {dina8x16[3]:0>2x}")
-  println(&"  Version  = {cast[ptr uint32](addr dina8x16[4])[]}")
-  println(&"  HdrSize  = {cast[ptr uint32](addr dina8x16[8])[]}")
-  println(&"  Flags    = {cast[ptr uint32](addr dina8x16[12])[]}")
-  println(&"  Length   = {cast[ptr uint32](addr dina8x16[16])[]}")
-  println(&"  CharSize = {cast[ptr uint32](addr dina8x16[20])[]}")
-  println(&"  Height   = {cast[ptr uint32](addr dina8x16[24])[]}")
-  println(&"  Width    = {cast[ptr uint32](addr dina8x16[28])[]}")

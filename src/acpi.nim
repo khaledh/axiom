@@ -1,5 +1,9 @@
+import std/strformat
+
+import console
+
 type
-  RSDP* = object
+  Rsdp* = object
     signature*: array[8, uint8]
     checksum*: uint8
     oemId*: array[6, uint8]
@@ -20,3 +24,8 @@ type
     oem_revision*: uint32
     creator_id*: array[4, uint8]
     creator_revision*: uint32
+
+proc dumpRsdp*(rsdp: ptr Rsdp) =
+  writeln("")
+  writeln("RSDP")
+  writeln(&"  Revision: {rsdp.revision:x}")

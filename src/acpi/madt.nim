@@ -1,22 +1,36 @@
+#[
+  ACPI: MADT (Multiple APIC Description Table)
+
+  Responsibilities:
+  - ???
+
+  Requires:
+  - acpi.tables.xsdt
+
+  Provides:
+  - acpi.tables.madt
+]#
+
 import std/strformat
+import std/tables
 
 import ../acpi
-import ../debug
-import ../ioapic
+import ../console
+import xsdt
 
 type
   MultipleApicFlag {.size: sizeof(uint32).} = enum
     PcAtCompat  = "PC/AT Compatible PIC"
   MultipleApicFlags = set[MultipleApicFlag]
 
-  MADT* {.packed.} = object
+  Madt* {.packed.} = object
     hdr: TableDescriptionHeader
     lapicAddress: uint32
     flags: MultipleApicFlags
 
   InterruptControllerType {.size: sizeof(uint8).}= enum
     ictLocalApic                 = "Local APIC"
-    ictIoApic                    = "I/O APIC"
+    ictIoapic                    = "I/O APIC"
     ictInterruptSourceOverride   = "Interrupt Source Override"
     ictNmiSource                 = "NMI Source"
     ictLocalApicNmi              = "Local APIC NMI"
@@ -49,10 +63,10 @@ type
 
   Ioapic* {.packed.} = object
     hdr: InterruptControllerHeader
-    ioapicId: uint8
+    id*: uint8
     reserved: uint8
-    address: uint32
-    gsiBase: uint32
+    address*: uint32
+    gsiBase*: uint32
 
   InterruptSourceOverride {.packed.} = object
     hdr: InterruptControllerHeader
@@ -81,42 +95,74 @@ type
     lintN: uint8
 
 
-proc dumpMadt*(madt: ptr MADT) =
-  println("")
-  println("MADT (Multiple APIC Description Table")
-  println(&"  Local APIC Address: {madt.lapicAddress:0>8x}")
-  println(&"  Flags:              {madt.flags}")
-  println("")
-  println(&"  Interrupt Controller Structures")
+proc initMadt*(xsdt: Xsdt): ptr Madt =
+  let hdr = xsdt.entries.getOrDefault(['A', 'P', 'I', 'C'])
+  if not isNil(hdr):
+    result = cast[ptr Madt](hdr)
 
-  var ioapic: ptr Ioapic
-
+iterator intCtrlStructs(madt: ptr Madt): ptr InterruptControllerHeader {.inline.} =
   var intCtrlStruct = cast[ptr InterruptControllerHeader](cast[uint64](madt) + sizeof(TableDescriptionHeader).uint64 + 8)
   while cast[uint64](intCtrlStruct) - cast[uint64](madt) < madt.hdr.length:
-    println("")
-    println(&"    {intCtrlStruct.typ}")
+    yield intCtrlStruct
+    intCtrlStruct = cast[ptr InterruptControllerHeader](cast[uint64](intCtrlStruct) + intCtrlStruct.len)
+
+
+# Local APICs
+iterator lapics*(madt: ptr Madt): ptr LocalApic =
+  for intCtrlStruct in intCtrlStructs(madt):
+    if intCtrlStruct.typ == ictLocalApic:
+      yield cast[ptr LocalApic](intCtrlStruct)
+
+# I/O APICs
+iterator ioapics*(madt: ptr Madt): ptr Ioapic =
+  for intCtrlStruct in intCtrlStructs(madt):
+    if intCtrlStruct.typ == ictIoapic:
+      yield cast[ptr Ioapic](intCtrlStruct)
+
+# Interrupt Source Overrides
+iterator interruptSourceOverrides*(madt: ptr Madt): ptr InterruptSourceOverride =
+  for intCtrlStruct in intCtrlStructs(madt):
+    if intCtrlStruct.typ == ictInterruptSourceOverride:
+      yield cast[ptr InterruptSourceOverride](intCtrlStruct)
+
+# Local APIC NMIs
+iterator lapicNMIs*(madt: ptr Madt): ptr LocalApicNmi =
+  for intCtrlStruct in intCtrlStructs(madt):
+    if intCtrlStruct.typ == ictLocalApicNmi:
+      yield cast[ptr LocalApicNmi](intCtrlStruct)
+
+
+proc dumpMadt*(madt: ptr Madt) =
+  writeln("")
+  writeln("MADT (Multiple APIC Description Table)")
+  writeln(&"  Local APIC Address: {madt.lapicAddress:0>8x}")
+  writeln(&"  Flags:              {madt.flags}")
+  writeln("")
+  writeln(&"  Interrupt Controller Structures")
+
+  for intCtrlStruct in intCtrlStructs(madt):
+    writeln("")
+    writeln(&"    {intCtrlStruct.typ}")
     case intCtrlStruct.typ
       of ictLocalApic:
         let lapic = cast[ptr LocalApic](intCtrlStruct)
-        println(&"      Processor UID: {lapic.processorUid}")
-        println(&"      LAPIC ID:      {lapic.lapicId}")
-        println(&"      Flags:         {lapic.flags}")
+        writeln(&"      Processor UID: {lapic.processorUid}")
+        writeln(&"      LAPIC ID:      {lapic.lapicId}")
+        writeln(&"      Flags:         {lapic.flags}")
       of ictIoApic:
-        ioapic = cast[ptr IoApic](intCtrlStruct)
-        println(&"      I/O APIC ID:   {ioapic.ioapicId}")
-        println(&"      Address:       {ioapic.address:0>8x}")
-        println(&"      GSI Base:      {ioapic.gsiBase}")
-        setIoapic(ioapic.ioapicId, ioapic.address, ioapic.gsiBase)
+        let ioapic = cast[ptr Ioapic](intCtrlStruct)
+        writeln(&"      I/O APIC ID:   {ioapic.id}")
+        writeln(&"      Address:       {ioapic.address:0>8x}")
+        writeln(&"      GSI Base:      {ioapic.gsiBase}")
       of ictInterruptSourceOverride:
         let intSrcOverride = cast[ptr InterruptSourceOverride](intCtrlStruct)
-        println(&"      Bus:           {intSrcOverride.bus}")
-        println(&"      Source:        {intSrcOverride.source}")
-        println(&"      GSI:           {intSrcOverride.gsi}")
-        println(&"      Flags:         {intSrcOverride.flags}")
+        writeln(&"      Bus:           {intSrcOverride.bus}")
+        writeln(&"      Source:        {intSrcOverride.source}")
+        writeln(&"      GSI:           {intSrcOverride.gsi}")
+        writeln(&"      Flags:         {intSrcOverride.flags}")
       of ictLocalApicNmi:
         let lapicNmi = cast[ptr LocalApicNmi](intCtrlStruct)
-        println(&"      Processor UID: {lapicNmi.processorUid:0>2x}h")
-        println(&"      Flags:         {lapicNmi.flags}")
-        println(&"      LINT#:         {lapicNmi.lintN}")
+        writeln(&"      Processor UID: {lapicNmi.processorUid:0>2x}h")
+        writeln(&"      Flags:         {lapicNmi.flags}")
+        writeln(&"      LINT#:         {lapicNmi.lintN}")
       else: discard
-    intCtrlStruct = cast[ptr InterruptControllerHeader](cast[uint64](intCtrlStruct) + intCtrlStruct.len)

@@ -1,10 +1,7 @@
-import bitops
 import std/strbasics
 import std/strformat
 import std/strutils
 import std/tables
-import std/strformat
-import typetraits
 
 import acpi
 import acpi/fadt
@@ -27,6 +24,7 @@ import lapic
 import paging
 import pci
 import physmem
+import shell
 import task
 import timer
 import uefi
@@ -40,7 +38,7 @@ import lib/guid
 var sysTable: ptr EfiSystemTable
 
 proc printError(msg: string) =
-  println(msg)
+  writeln(msg)
 
 proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =
   printError(e.msg)
@@ -49,23 +47,114 @@ proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =
 proc thread1() {.cdecl.} =
   # while true:
   for i in 0..<20:
-    print(".")
+    write(".")
     for i in 0..250000:
       asm "pause"
 
 proc thread2() {.cdecl.} =
   # while true:
   for i in 0..<20:
-    print("o")
+    write("o")
     for i in 0..250000:
       asm "pause"
 
-proc thread3() {.cdecl.} =
-  # while true:
-  for i in 0..<20:
-    print("-")
-    for i in 0..250000:
-      asm "pause"
+var
+  rsdp: ptr Rsdp
+  xsdt0: Xsdt
+  fadt0: ptr Fadt
+  madt0: ptr Madt
+  ioapic0: ioapic.Ioapic
+  lineBuffer: string
+
+proc dumpHelp() =
+  writeln("Commands")
+  writeln("")
+  writeln("  ping          Respond with 'pong'")
+  writeln("  firmware      Show firmware version")
+  writeln("  memory        Show the memory map")
+  writeln("  uefi tables   Show UEFI config table")
+  writeln("  uefi text     Show UEFI text modes")
+  writeln("  rsdp          Show ACPI RSDP")
+  writeln("  xsdt          Show ACPI XSDT table")
+  writeln("  fadt          Show ACPI FADT table")
+  writeln("  madt          Show ACPI MADT table")
+  writeln("  idt           Show Interrupt Descriptor Table")
+  writeln("  gdt           Show Global Descriptor Table")
+  writeln("  lapic         Show Local APIC information")
+  writeln("  iopic         Show I/O APIC information")
+  writeln("  pci           Show PCI configuration")
+  writeln("  ahci          Show AHCI configuration")
+  writeln("  cpuid         Show CPUID information")
+  writeln("  ctlreg        Show CPU control registers")
+  writeln("  font          Show font information")
+  writeln("  halt          Halt without shutting down")
+  writeln("  shutdown      Shutdown")
+
+proc dispatchCommand(cmd: string) =
+  case cmd:
+  of "help":
+    dumpHelp()
+  of "ping":
+    writeln("pong")
+  of "rsdp":
+    dumpRsdp(rsdp)
+  of "xsdt":
+    dumpXsdt(xsdt0)
+  of "fadt":
+    dumpFadt(fadt0)
+  of "madt":
+    dumpMadt(madt0)
+  of "idt":
+    dumpIdt()
+  of "gdt":
+    dumpGdt()
+  of "lapic":
+    lapic.dump()
+  of "ioapic":
+    ioapic0.dump()
+  of "pci":
+    dumpPciConfig()
+  of "ahci":
+    dumpAhci(bus=0, dev=0x1f, fn=2, sysTable.bootServices)
+  of "font":
+    dumpFont()
+  of "cpuid":
+    dumpCpuid()
+  of "ctlreg":
+    dumpControlRegisters()
+  of "memory":
+    discard dumpMemoryMap(sysTable.bootServices)
+  of "paging":
+    dumpPagingTables()
+  of "firmware":
+    dumpFirmwareVersion(sysTable)
+  of "uefi tables":
+    dumpUefiConfigTables(sysTable)
+  of "uefi text":
+    dumpSimpletext(sysTable.conOut)
+  of "shutdown":
+    writeln("Shutting down")
+    shutdown()
+  of "halt":
+    writeln("Halt")
+    halt()
+  else:
+    writeln("Uknown command")
+
+proc keyHandler(evt: KeyEvent) =
+  if evt.eventType == KeyDown and evt.ch != '\0':
+    if evt.ch == '\n':
+      writeln("")
+      dispatchCommand(lineBuffer)
+      writeln("")
+      write("] ")
+      lineBuffer = ""
+    elif evt.ch == '\b':
+      lineBuffer.delete(len(lineBuffer)-1 .. len(lineBuffer)-1)
+      write(&"{evt.ch}")
+    else:
+      lineBuffer &= evt.ch
+      write(&"{evt.ch}")
 
 proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.exportc.} =
   sysTable = systemTable
@@ -76,136 +165,83 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   errorMessageWriter = printError
   unhandledExceptionHook = handleUnhandledException
 
-  let GOP_GUID = parseGuid("9042a9de-23dc-4a38-fb96-7aded080516a")
-  var igop: pointer
-  let st = sysTable.bootServices.locateProtocol(unsafeAddr GOP_GUID, nil, addr igop)
-  var gop = cast[ptr EfiGraphicsOutputProtocol](igop)
-
   discard sysTable.conOut.setMode(sysTable.conOut, 2)
 
   # discard sysTable.conOut.clearScreen(systemTable.conOut)
-  discard sysTable.conOut.enableCursor(systemTable.conOut, false)
+  # discard sysTable.conOut.enableCursor(systemTable.conOut, true)
+  # discard sysTable.conOut.enableCursor(systemTable.conOut, false)
 
-  println("""
-      _          _                    ___  ____  
-     / \   __  _(_) ___  _ __ ___    / _ \/ ___| 
-    / _ \  \ \/ / |/ _ \| '_ ` _ \  | | | \___ \ 
-   / ___ \  >  <| | (_) | | | | | | | |_| |___) |
-  /_/   \_\/_/\_\_|\___/|_| |_| |_|  \___/|____/ 
-  """)
+  # when false:
 
-  dumpFirmwareVersion(sysTable)
-
-  let memoryMapKey = dumpMemoryMap(sysTable.bootServices)
-
-  dumpSimpletext(sysTable.conOut)
-
-  dumpGop(gop)
-
-  loadFont()
-  dumpFont()
+  # let GOP_GUID = parseGuid("9042a9de-23dc-4a38-fb96-7aded080516a")
+  # var igop: pointer
+  # discard sysTable.bootServices.locateProtocol(unsafeAddr GOP_GUID, nil, addr igop)
+  # var gop = cast[ptr EfiGraphicsOutputProtocol](igop)
+  # dumpGop(gop)
 
   # discard gop.setMode(gop, 14)  # 1280x1024
   # var fb = initFramebuffer(gop.mode.frameBufferBase, width=1280, height=1024)
 
-  # # BGA (Bochs Graphics Adapter)
-  # let bgaId = bgaReadRegister(BxvbePortIndexId)
-  # println(&"BGA ID = {bgaId:0>4x}")
+  # BGA (Bochs Graphics Adapter)
+  let bgaId = bgaReadRegister(BxvbePortIndexId)
+  println(&"BGA ID = {bgaId:0>4x}")
 
-  # bgaSetVideoMode(1280, 1024, 32)
+  bgaSetVideoMode(1280, 1024, 32)
 
-  # let virtWidth = bgaReadRegister(BxvbePortIndexVirtWidth)
-  # let virtHeight = bgaReadRegister(BxvbePortIndexVirtHeight)
-  # println(&"BGA VirtualRes = {virtWidth}x{virtHeight}")
+  let virtWidth = bgaReadRegister(BxvbePortIndexVirtWidth)
+  let virtHeight = bgaReadRegister(BxvbePortIndexVirtHeight)
+  println(&"BGA VirtualRes = {virtWidth}x{virtHeight}")
 
-  # var fb = initFramebuffer(BxvbeLfbPhysicalAddress, width=1280, height=1024)
+  var fb = initFramebuffer(BxvbeLfbPhysicalAddress, width=1280, height=1024)
 
-  # # clear background
-  # fb.clear(0x2d363d'u32)
+  # clear background
+  fb.clear(0x2d363d'u32)
 
 
-  # var fnt = loadFont16()
-  # var con = initConsole(fb, left=8, top=16, font=fnt, maxCols=158, maxRows=62, color=0x2d363d'u32)
+  var fnt = loadFont16()
+  # let consoleBkColor = 0x2d363d'u32
+  # let consoleBkColor = 0x1d262d'u32
+  let consoleBkColor = 0x0d161d'u32
+  initConsole(fb, left=8, top=16, font=fnt, maxCols=158, maxRows=61, color=consoleBkColor)
 
-  # con.write("""    _          _                    ___  ____  """); con.write("\n")
-  # con.write("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """); con.write("\n")
-  # con.write("""  / _ \  \ \/ / |/ _ \| '_ ` _ \  | | | \___ \ """); con.write("\n")
-  # con.write(""" / ___ \  >  <| | (_) | | | | | | | |_| |___) |"""); con.write("\n")
-  # con.write("""/_/   \_\/_/\_\_|\___/|_| |_| |_|  \___/|____/ """); con.write("\n")
-  # con.write("\n");
-  # con.write("Nim is awesome!", 0xa0caef)
-  # con.flush()
+  writeln("""    _          _                    ___  ____  """, 0xa0caef)
+  writeln("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """, 0xa0caef)
+  writeln("""  / _ \  \ \/ / |/ _ \| '_ ` _ \  | | | \___ \ """, 0xa0caef)
+  writeln(""" / ___ \  >  <| | (_) | | | | | | | |_| |___) |""", 0xa0caef)
+  writeln("""/_/   \_\/_/\_\_|\___/|_| |_| |_|  \___/|____/ """, 0xa0caef)
+  writeln("")
 
-  # discard systemTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
 
-  # halt()
-
-  dumpCpuid()
-  dumpControlRegisters()
-
-  dumpGdt()
-  dumpIdt()
-
-  # Get physical and linear address sizes
-  var eax, ebx, ecx, edx: uint32
-  eax = 0x80000008'u32
-  cpuid(addr eax, addr ebx, addr ecx, addr edx)
-  println("")
-  println(&"  # Physical Address Bits: {eax and 0xff}")
-  println(&"  # Linear Address Bits:   {(eax shr 8) and 0xff}")
-
-  dumpPagingTables()
-
-  #############################################
-  ##  UEFI Configuration Tables
-
-  dumpUefiConfigTables(sysTable)
+  loadFont()
 
   #############################################
   ##  ACPI Tables
 
+  initEfiGuids()
   let configTables = getUefiConfigTables(sysTable)
 
   var acpiTable = configTables.getOrDefault(EfiAcpi2TableGuid)
   if not isNil(acpiTable):
-    let rsdp = cast[ptr RSDP](configTables[EfiAcpi2TableGuid])
-    println("")
-    println("RSDP")
-    println(&"  Revision: {rsdp.revision:x}")
+    let rsdp = cast[ptr Rsdp](configTables[EfiAcpi2TableGuid])
 
-    let xsdt = parseXsdt(rsdp.xsdtAddress)
-    dumpXsdt(xsdt)
+    let xsdt = initXsdt(rsdp)
+    xsdt0 = xsdt
+    # dumpXsdt(xsdt)
 
-    var hdr: ptr TableDescriptionHeader
-
-    hdr = xsdt.entries.getOrDefault(['F', 'A', 'C', 'P'])
+    var hdr = xsdt.entries.getOrDefault(['F', 'A', 'C', 'P'])
     if not isNil(hdr):
-      let fadt = parseFadt(cast[pointer](hdr))
-      dumpFadt(fadt)
+      fadt0 = parseFadt(cast[pointer](hdr))
 
-    hdr = xsdt.entries.getOrDefault(['A', 'P', 'I', 'C'])
-    if not isNil(hdr):
-      let madt = cast[ptr MADT](hdr)
-      dumpMadt(madt)
+    madt0 = initMadt(xsdt)
 
-  #############################################
-  ##  APICs
+    #############################################
+    ##  APICs
 
-  lapicLoadBaseAddress()
-  dumpLapic()
+    initLapic()
 
-  dumpIoapic()
-
-  #############################################
-  ##  PCI
-
-  dumpPciConfig()
-  dumpAhci(bus=0, dev=0x1f, fn=2, sysTable.bootServices)
-
-  #############################################
-  ##  Exit UEFI Boot Services
-
-  # let ebsStatus = sysTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
+    ioapic0 = initIoapic(madt0)
+    # set keyboard interrupt: interrupt input 1 => vector 21h
+    ioapic0.setRedirEntry(1, 0x21)
 
   #############################################
   ##  Setup interrupts
@@ -219,22 +255,30 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   portOut8(Pic1DataPort, 0xff);
   portOut8(Pic2DataPort, 0xff);
 
-  println("")
+  initIdt()
+  initKeyboard(keyHandler)
+  initTimer()
+
+  writeln("Welcome to AxiomOS")
+
+  # halt()
 
   initThreads()
 
   let t0 = createThread(idle, ThreadPriority.low)
-  let t1 = createThread(thread1)
-  let t2 = createThread(thread2)
-  # let t3 = createThread(thread3)
-
   t0.startThread()
-  t1.startThread()
-  t2.startThread()
-  # t3.startThread()
 
-  initTimer()
+  # let t1 = createThread(thread1)
+  # let t2 = createThread(thread2)
 
+  # t1.startThread()
+  # t2.startThread()
+
+  # let t1 = createThread(shell.start)
+
+
+  writeln("")
+  write("] ")
   jumpToThread(t0)
 
 
@@ -244,10 +288,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   #   div rcx
   # """
 
-  # idle()
-
   #############################################
-  ##  Shutdown
+  ##  Exit UEFI Boot Services
 
-  # shutdown()
-  # halt()
+  # let ebsStatus = sysTable.bootServices.exitBootServices(imageHandle, memoryMapKey)

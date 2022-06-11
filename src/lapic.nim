@@ -1,7 +1,7 @@
 import std/strformat
 
+import console
 import cpu
-import debug
 
 type
   IA32ApicBaseMsr* {.packed.} = object
@@ -12,19 +12,6 @@ type
     baseAddress* {.bitsize: 24.}: uint64
     reserved3    {.bitsize: 28.}: uint64
 
-var lapicBaseMsr*: Ia32ApicBaseMsr
-var lapicBaseAddress*: uint32
-
-proc lapicLoadBaseAddress*() =
-  lapicBaseMsr = cast[Ia32ApicBaseMsr](readMSR(0x1b))
-  lapicBaseAddress = (lapicBaseMsr.baseAddress shl 12).uint32
-
-
-#[
-  Local APIC Registers
-]#
-
-type
   LapicOffset* = enum
     LapicId            = 0x020
     LapicVersion       = 0x030
@@ -51,7 +38,6 @@ type
     TimerCurrentCount  = 0x390
     TimerDivideConfig  = 0x3e0
 
-type
   LapicIdRegister* {.packed.} = object
     reserved     {.bitsize: 24.}: uint32
     apicId*      {.bitsize:  8.}: uint32
@@ -77,7 +63,6 @@ type
     illegalRegisterAddress* {.bitsize:  1.}: uint8
     reserved2               {.bitsize: 24.}: uint32
 
-type
   LvtTimerMode* {.size: 1.} = enum
     tmOneShot     = (0b00, "One-shot")
     tmPeriodic    = (0b01, "Periodic")
@@ -102,7 +87,6 @@ type
     itrEdge       = "Edge"
     itrLevel      = "Level"
 
-type
   LvtRegister* {.packed.} = object
     vector*         {.bitsize:  8.}: uint8
     deliveryMode*   {.bitsize:  3.}: LvtDeliveryMode
@@ -123,71 +107,92 @@ type
     timerMode*      {.bitsize:  2.}: LvtTimerMode
     reserved3       {.bitsize: 13.}: uint16
 
+var
+  baseAddress: uint32
 
-proc lapicRead*(offset: int): uint32 =
-  result = cast[ptr uint32](lapicBaseAddress + offset.uint16)[]
+proc initLapic*() =
+  let baseMsr = cast[Ia32ApicBaseMsr](readMSR(0x1b))
+  baseAddress = (baseMsr.baseAddress shl 12).uint32
 
-proc lapicRead*(offset: LapicOffset): uint32 =
-  lapicRead(offset.int)
+proc readRegister(offset: int): uint32 =
+  result = cast[ptr uint32](baseAddress + offset.uint16)[]
 
-proc lapicWrite*(offset: int, value: uint32) =
-  cast[ptr uint32](lapicBaseAddress + offset.uint16)[] = value
+proc readRegister(offset: LapicOffset): uint32 =
+  readRegister(offset.int)
 
-proc lapicWrite*(offset: LapicOffset, value: uint32) =
-  lapicWrite(offset.int, value)
+proc writeRegister(offset: int, value: uint32) =
+  cast[ptr uint32](baseAddress + offset.uint16)[] = value
+
+proc writeRegister(offset: LapicOffset, value: uint32) =
+  writeRegister(offset.int, value)
+
+const
+  DivideBy2   = 0b0000
+  DivideBy4   = 0b0001
+  DivideBy8   = 0b0010
+  DivideBy16  = 0b0011
+  DivideBy32  = 0b1000
+  DivideBy64  = 0b1001
+  DivideBy128 = 0b1010
+  DivideBy1   = 0b1011
+
+proc setTimer*(vector: uint8) =
+  writeRegister(LapicOffset.TimerDivideConfig, DivideBy16)
+  # writeRegister(LapicOffset.TimerInitialCount, 4375000)
+  writeRegister(LapicOffset.TimerInitialCount, 200_000)
+  writeRegister(LapicOffset.LvtTimer, vector.uint32 or (0x01 shl 17))
+
+# End of Interrupt
+proc eoi*() =
+  writeRegister(LapicOffset.Eoi, 0)
+
+proc dump*() =
+  let baseMsr = cast[Ia32ApicBaseMsr](readMSR(0x1b))
+
+  writeln("")
+  writeln("IA32_APIC_BASE MSR")
+  writeln(&"  Is Bootstrap Processor (BSP) = {baseMsr.isBsp}")
+  writeln(&"  APIC Global Enable           = {baseMsr.enabled}")
+  writeln(&"  APIC Base Address            = {baseAddress:0>8x}")
+
+  writeln("")
+  writeln("Local APIC Registers")
+
+  let lapicid = cast[LapicIdRegister](readRegister(LapicOffset.LapicId))
+  writeln("")
+  writeln("  APIC ID Register")
+  writeln(&"    APIC ID      = {lapicid.apicId}")
+
+  let lapicVersion = cast[LapicVersionRegister](readRegister(0x30))
+  writeln("")
+  writeln("  APIC Version Register")
+  writeln(&"    Version                           = {lapicVersion.version:0>2x}h")
+  writeln(&"    Max LVT Entry:                    = {lapicVersion.maxLvtEntry}")
+  writeln(&"    Suppress EOI-broadcasts Supported = {lapicVersion.suppressEoiBroadcastSupported}")
 
 
-proc dumpLapic*() =
-  println("")
-  println("IA32_APIC_BASE MSR")
-  println(&"  Is Bootstrap Processor (BSP) = {lapicBaseMsr.isBsp}")
-  println(&"  APIC Global Enable           = {lapicBaseMsr.enabled}")
-  println(&"  APIC Base Address            = {lapicBaseAddress:0>8x}")
-
-  println("")
-  println("Local APIC Registers")
-
-  let lapicid = cast[LapicIdRegister](lapicRead(LapicOffset.LapicId))
-  println("")
-  println("  APIC ID Register")
-  println(&"    APIC ID      = {lapicid.apicId}")
-
-  let lapicVersion = cast[LapicVersionRegister](lapicRead(0x30))
-  println("")
-  println("  APIC Version Register")
-  println(&"    Version                           = {lapicVersion.version:0>2x}h")
-  println(&"    Max LVT Entry:                    = {lapicVersion.maxLvtEntry}")
-  println(&"    Suppress EOI-broadcasts Supported = {lapicVersion.suppressEoiBroadcastSupported}")
+  let svr = cast[SupriousInterruptVectorRegister](readRegister(LapicOffset.SpuriousInterrupt))
+  writeln("")
+  writeln("  Spurious Interrupt Vector Register")
+  writeln(&"    Vector       = {svr.vector:0>2x}h")
+  writeln(&"    APIC Enabled = {svr.apicEnable}")
 
 
-  let svr = cast[SupriousInterruptVectorRegister](lapicRead(LapicOffset.SpuriousInterrupt))
-  println("")
-  println("  Spurious Interrupt Vector Register")
-  println(&"    Vector       = {svr.vector:0>2x}h")
-  println(&"    APIC Enabled = {svr.apicEnable}")
+  let timer = cast[LvtTimerRegister](readRegister(LapicOffset.LvtTimer))
+  let lint0 = cast[LvtRegister](readRegister(LapicOffset.LvtLint0))
+  let lint1 = cast[LvtRegister](readRegister(LapicOffset.LvtLint1))
+  let error = cast[LvtRegister](readRegister(LapicOffset.LvtError))
 
-
-  let timer = cast[LvtTimerRegister](lapicRead(LapicOffset.LvtTimer))
-  let lint0 = cast[LvtRegister](lapicRead(LapicOffset.LvtLint0))
-  let lint1 = cast[LvtRegister](lapicRead(LapicOffset.LvtLint1))
-  let error = cast[LvtRegister](lapicRead(LapicOffset.LvtError))
-
-  println("")
-  println("  LVT Registers")
-  println(&"           Vector  DeliveryMode  DeliveryStatus  Polarity    TriggerMode  RemoteIRRFlag  Mask")
-  println(&"    Timer  {timer.vector:0>2x}                    {timer.deliveryStatus}                                                    {timer.mask}     TimerMode: {timer.timerMode}")
-  println(&"    LINT0  {lint0.vector:0>2x}      {lint0.deliveryMode: <12}  {lint0.deliveryStatus}            {lint0.intPolarity}  {lint0.intTriggerMode}         {lint0.remoteIrrFlag}              {lint0.mask}")
-  println(&"    LINT1  {lint1.vector:0>2x}      {lint1.deliveryMode: <12}  {lint1.deliveryStatus}            {lint1.intPolarity}  {lint1.intTriggerMode}         {lint1.remoteIrrFlag}              {lint1.mask}")
-  println(&"    Error  {error.vector:0>2x}                    {error.deliveryStatus}                                                    {error.mask}")
+  writeln("")
+  writeln("  LVT Registers")
+  writeln(&"           Vector  DeliveryMode  DeliveryStatus  Polarity    TriggerMode  RemoteIRRFlag  Mask")
+  writeln(&"    Timer  {timer.vector:0>2x}                    {timer.deliveryStatus}                                                    {timer.mask}     TimerMode: {timer.timerMode}")
+  writeln(&"    LINT0  {lint0.vector:0>2x}      {lint0.deliveryMode: <12}  {lint0.deliveryStatus}            {lint0.intPolarity}  {lint0.intTriggerMode}         {lint0.remoteIrrFlag}              {lint0.mask}")
+  writeln(&"    LINT1  {lint1.vector:0>2x}      {lint1.deliveryMode: <12}  {lint1.deliveryStatus}            {lint1.intPolarity}  {lint1.intTriggerMode}         {lint1.remoteIrrFlag}              {lint1.mask}")
+  writeln(&"    Error  {error.vector:0>2x}                    {error.deliveryStatus}                                                    {error.mask}")
   if lapicVersion.maxLvtEntry >= 4:
-    let perf = cast[LvtRegister](lapicRead(0x340))
-    println(&"    Perf   {perf.vector:0>2x}      {perf.deliveryMode: <12}  {perf.deliveryStatus}                                                    {perf.mask}")
+    let perf = cast[LvtRegister](readRegister(0x340))
+    writeln(&"    Perf   {perf.vector:0>2x}      {perf.deliveryMode: <12}  {perf.deliveryStatus}                                                    {perf.mask}")
   if lapicVersion.maxLvtEntry >= 5:
-    let therm = cast[LvtRegister](lapicRead(0x330))
-    println(&"    Therm  {therm.vector:0>2x}      {therm.deliveryMode: <12}  {therm.deliveryStatus}                                                    {therm.mask}")
-
-
-proc lapicSetTimer*(vector: uint8) =
-  lapicWrite(LapicOffset.TimerDivideConfig, 0b1001) # Divide by 64
-  lapicWrite(LapicOffset.TimerInitialCount, 4375000)
-  lapicWrite(LapicOffset.LvtTimer, vector.uint32 or (0x01 shl 17))
+    let therm = cast[LvtRegister](readRegister(0x330))
+    writeln(&"    Therm  {therm.vector:0>2x}      {therm.deliveryMode: <12}  {therm.deliveryStatus}                                                    {therm.mask}")

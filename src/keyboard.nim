@@ -1,4 +1,8 @@
+import std/strformat
+
+import console
 import cpu
+import idt
 import lapic
 
 
@@ -44,12 +48,10 @@ var
   shift, ctrl, alt = false
   handleKeyEvent: KeyEventHandler
 
-proc initKeyboard*(handler: KeyEventHandler) =
-  handleKeyEvent = handler
-
-
 {.push stackTrace:off.}
-proc kbdInterruptHandler*(intFrame: pointer) {.codegenDecl: "__attribute__ ((interrupt)) $# $#$#".}=
+proc kbdInterruptHandler*(intFrame: pointer)
+    {.cdecl, codegenDecl: "__attribute__ ((interrupt)) $# $#$#".}=
+
   var scanCode = portIn8(0x60)
 
   if (scanCode and 0x80) == 0:
@@ -93,5 +95,10 @@ proc kbdInterruptHandler*(intFrame: pointer) {.codegenDecl: "__attribute__ ((int
           alt: alt,
         ))
 
-  lapicWrite(LapicOffset.Eoi, 0)
+  lapic.eoi()
 {.pop.}
+
+proc initKeyboard*(handler: KeyEventHandler) =
+  handleKeyEvent = handler
+  # writeln("  Setting keyboard interrupt handler (0x21)")
+  setInterruptHandler(0x21, kbdInterruptHandler)

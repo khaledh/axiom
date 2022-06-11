@@ -1,7 +1,7 @@
 import std/strformat
 
 import ata
-import debug
+import console
 import pci
 import uefitypes
 
@@ -248,9 +248,9 @@ type
     rsv1                       : uint32  # Reserved
 
 proc dumpAhci*(bus, dev, fn: uint8, bs: ptr EfiBootServices) =
-  println("")
-  println("AHCI")
-  println("")
+  writeln("")
+  writeln("AHCI")
+  writeln("")
 
   var
     capOffset = pciConfigRead16(bus, dev, fn, 0x34).uint8
@@ -261,33 +261,33 @@ proc dumpAhci*(bus, dev, fn: uint8, bs: ptr EfiBootServices) =
     while capOffset != 0:
       (capValue, nextCapOffset) = pciNextCapability(bus, dev, fn, capOffset)
       if capValue == 0x12: # SATA Index-Data Pair (IDP) Configuration
-        print("  IDP capability:")
+        write("  IDP capability:")
         let revision = pciConfigRead16(bus, dev, fn, capOffset + 2)
-        print(&" revision={(revision shr 4) and 0xf}.{revision and 0xf}")
+        write(&" revision={(revision shr 4) and 0xf}.{revision and 0xf}")
         let satacr1 = pciConfigRead16(bus, dev, fn, capOffset + 4)
-        print(&", barloc={satacr1 and 0xf:0>4b}b, barofst={(satacr1 shr 4) and 0xfffff:0>5x}h")
+        write(&", barloc={satacr1 and 0xf:0>4b}b, barofst={(satacr1 shr 4) and 0xfffff:0>5x}h")
       capOffset = nextCapOffset
-    println("")
+    writeln("")
 
-  println("")
+  writeln("")
 
   let abar = pciConfigRead32(bus, dev, fn, 0x24) # BAR5
-  println(&"  ABAR = {abar:0>8x}h")
+  writeln(&"  ABAR = {abar:0>8x}h")
 
   let hbaCap = cast[ptr HbaCap](abar)  # HBA Capabilities
-  println(&"  CAP = {hbaCap[]}")
+  writeln(&"  CAP = {hbaCap[]}")
 
   let globalHbaControl = cast[ptr GlobalHbaControl](abar + 0x04)  # Globla HBA Control
-  println(&"  GHC = {globalHbaControl[]}")
+  writeln(&"  GHC = {globalHbaControl[]}")
 
   let ips = cast[ptr uint32](abar + 0x08)  # Interrupt Pending Status
-  println(&"  IPS = {ips[]:0>32b}b")
+  writeln(&"  IPS = {ips[]:0>32b}b")
 
   let pi = cast[ptr uint32](abar + 0x0c)  # Ports Implemented
-  println(&"  PI  = {pi[]:0>32b}b")
+  writeln(&"  PI  = {pi[]:0>32b}b")
 
   let vs = cast[ptr uint32](abar + 0x10)  # AHCI Version
-  println(&"  VS  = {vs[]:0>8x}h")
+  writeln(&"  VS  = {vs[]:0>8x}h")
 
   # Ports
 
@@ -302,25 +302,25 @@ proc dumpAhci*(bus, dev, fn: uint8, bs: ptr EfiBootServices) =
     #   inc(x)
     # portRegs.sctl.det = 0
 
-    println("")
-    println(&"  Port {i} Registers")
-    println(&"    CLB    = {portRegs.clb.clb:0>8x}h")
-    println(&"    CLBU   = {portRegs.clbu.clbu:0>8x}h")
-    println(&"    FB     = {portRegs.fb.fb:0>8x}h")
-    println(&"    FBU    = {portRegs.fbu.fbu:0>8x}h")
-    println(&"    IS     = {portRegs.is}")
-    println(&"    IE     = {portRegs.ie}")
-    println(&"    CMD    = {portRegs.cmd}")
-    println(&"    TFD    = sts:{portRegs.tfd.sts:0>8b}b, err:{portRegs.tfd.err:0>8b}b")
-    println(&"    SIG    = {portRegs.sig.sig:0>8x}h")
-    println(&"    SSTS   = {portRegs.ssts}")
-    println(&"    SCTL   = {portRegs.sctl}")
-    println(&"    SERR   = {portRegs.serr}")
-    println(&"    SACT   = {portRegs.sact.ds:0>32b}b")
-    println(&"    CI     = {portRegs.ci.ci:0>32b}b")
-    println(&"    SNTF   = {portRegs.sntf.pmn:0>16b}b")
-    println(&"    FBS    = {portRegs.fbs}")
-    println(&"    DEVSLP = {portRegs.devslp}")
+    writeln("")
+    writeln(&"  Port {i} Registers")
+    writeln(&"    CLB    = {portRegs.clb.clb:0>8x}h")
+    writeln(&"    CLBU   = {portRegs.clbu.clbu:0>8x}h")
+    writeln(&"    FB     = {portRegs.fb.fb:0>8x}h")
+    writeln(&"    FBU    = {portRegs.fbu.fbu:0>8x}h")
+    writeln(&"    IS     = {portRegs.is}")
+    writeln(&"    IE     = {portRegs.ie}")
+    writeln(&"    CMD    = {portRegs.cmd}")
+    writeln(&"    TFD    = sts:{portRegs.tfd.sts:0>8b}b, err:{portRegs.tfd.err:0>8b}b")
+    writeln(&"    SIG    = {portRegs.sig.sig:0>8x}h")
+    writeln(&"    SSTS   = {portRegs.ssts}")
+    writeln(&"    SCTL   = {portRegs.sctl}")
+    writeln(&"    SERR   = {portRegs.serr}")
+    writeln(&"    SACT   = {portRegs.sact.ds:0>32b}b")
+    writeln(&"    CI     = {portRegs.ci.ci:0>32b}b")
+    writeln(&"    SNTF   = {portRegs.sntf.pmn:0>16b}b")
+    writeln(&"    FBS    = {portRegs.fbs}")
+    writeln(&"    DEVSLP = {portRegs.devslp}")
 
 
     if portRegs.ssts.det == 3:  # port has a device attached
@@ -356,57 +356,57 @@ proc dumpAhci*(bus, dev, fn: uint8, bs: ptr EfiBootServices) =
       )
 
       portRegs.is = cast[PortIS](0xffffffff'u32)
-      println(&"  IS      = {portRegs.is}")
+      writeln(&"  IS      = {portRegs.is}")
 
       portRegs.cmd.st = 1
       portRegs.cmd.fre = 1
-      println(&"  CMD     = {portRegs.cmd}")
+      writeln(&"  CMD     = {portRegs.cmd}")
 
-      println(&"  TFD.sts = {portRegs.tfd.sts:0>8b}b")
+      writeln(&"  TFD.sts = {portRegs.tfd.sts:0>8b}b")
 
       portRegs.serr = cast[PortSERR](0xffffffff'u32)
-      println(&"  SERR    = {portRegs.serr}")
+      writeln(&"  SERR    = {portRegs.serr}")
 
       portRegs.ci.ci = 1
 
-      println(&"  IS      = {portRegs.is}")
-      println(&"  CMD     = {portRegs.cmd}")
-      println(&"  TFD.sts = {portRegs.tfd.sts:0>8b}b")
-      println(&"  CI      = {portRegs.ci.ci:0>32b}b")
-      println(&"  SERR    = {portRegs.serr}")
+      writeln(&"  IS      = {portRegs.is}")
+      writeln(&"  CMD     = {portRegs.cmd}")
+      writeln(&"  TFD.sts = {portRegs.tfd.sts:0>8b}b")
+      writeln(&"  CI      = {portRegs.ci.ci:0>32b}b")
+      writeln(&"  SERR    = {portRegs.serr}")
 
       # for i in 0 .. 81:
-      #   println(&"  IDENTIFY[{i:0>2}] = {ident[i]:0>4x}h")
+      #   writeln(&"  IDENTIFY[{i:0>2}] = {ident[i]:0>4x}h")
 
       let idData = cast[IdentifyDeviceData](ident)
-      println(&"  Model number:          {idData.modelNo}")
-      println(&"  Serial number:         {idData.serialNo}")
-      println(&"  FW revision:           {idData.firmwareRevision}")
-      println(&"  Multiple Count:        {idData.multipleCount}")
-      println(&"  Cap DMA:               {idData.capDma}")
-      println(&"  Cap LBA:               {idData.capLba}")
-      println(&"  Total Sectors:         {idData.totalSectors}")
-      println(&"  Multiword DMA0:        {idData.multiwordDma0Support}")
-      println(&"  Multiword DMA1:        {idData.multiwordDma1Support}")
-      println(&"  Multiword DMA2:        {idData.multiwordDma2Support}")
-      println(&"  PIO Mode 3/4:          {idData.pioMode34Support:0>2b}b")
-      println(&"  ATA/ATAPI-5:           {idData.ata5}")
-      println(&"  ATA/ATAPI-6:           {idData.ata6}")
-      println(&"  ATA/ATAPI-7:           {idData.ata7}")
-      println(&"  ATA8-ACS:              {idData.ata8acs}")
-      println(&"  ACS-2:                 {idData.acs2}")
-      println(&"  ACS-3:                 {idData.acs3}")
-      println(&"  ACS-4:                 {idData.acs4}")
-      println(&"  Minor Version:         {idData.minorVersion:0>4x}h")
-      println(&"  Max Queue Depth:       {idData.maxQueueDepth}")
-      println(&"  SATA Gen1 Speed:       {idData.sataGen1}")
-      println(&"  SATA Gen2 Speed:       {idData.sataGen2}")
-      println(&"  SATA Gen3 Speed:       {idData.sataGen3}")
-      println(&"  SATA NCQ:              {idData.sataNcq}")
-      println(&"  SATA Host IPM:         {idData.sataHostIpm}")
-      println(&"  SATA Phy Evt Counters: {idData.sataPhyEventCounters}")
-      println(&"  SATA NCQ Unload:       {idData.sataNcqUnload}")
-      println(&"  SATA NCQ Pri:          {idData.sataNcqPriority}")
-      println(&"  SATA Host Auto P2S:    {idData.sataHostAutoP2S}")
-      println(&"  SATA Dev Auto P2S:     {idData.sataDeviceAutoP2S}")
+      writeln(&"  Model number:          {idData.modelNo}")
+      writeln(&"  Serial number:         {idData.serialNo}")
+      writeln(&"  FW revision:           {idData.firmwareRevision}")
+      writeln(&"  Multiple Count:        {idData.multipleCount}")
+      writeln(&"  Cap DMA:               {idData.capDma}")
+      writeln(&"  Cap LBA:               {idData.capLba}")
+      writeln(&"  Total Sectors:         {idData.totalSectors}")
+      writeln(&"  Multiword DMA0:        {idData.multiwordDma0Support}")
+      writeln(&"  Multiword DMA1:        {idData.multiwordDma1Support}")
+      writeln(&"  Multiword DMA2:        {idData.multiwordDma2Support}")
+      writeln(&"  PIO Mode 3/4:          {idData.pioMode34Support:0>2b}b")
+      writeln(&"  ATA/ATAPI-5:           {idData.ata5}")
+      writeln(&"  ATA/ATAPI-6:           {idData.ata6}")
+      writeln(&"  ATA/ATAPI-7:           {idData.ata7}")
+      writeln(&"  ATA8-ACS:              {idData.ata8acs}")
+      writeln(&"  ACS-2:                 {idData.acs2}")
+      writeln(&"  ACS-3:                 {idData.acs3}")
+      writeln(&"  ACS-4:                 {idData.acs4}")
+      writeln(&"  Minor Version:         {idData.minorVersion:0>4x}h")
+      writeln(&"  Max Queue Depth:       {idData.maxQueueDepth}")
+      writeln(&"  SATA Gen1 Speed:       {idData.sataGen1}")
+      writeln(&"  SATA Gen2 Speed:       {idData.sataGen2}")
+      writeln(&"  SATA Gen3 Speed:       {idData.sataGen3}")
+      writeln(&"  SATA NCQ:              {idData.sataNcq}")
+      writeln(&"  SATA Host IPM:         {idData.sataHostIpm}")
+      writeln(&"  SATA Phy Evt Counters: {idData.sataPhyEventCounters}")
+      writeln(&"  SATA NCQ Unload:       {idData.sataNcqUnload}")
+      writeln(&"  SATA NCQ Pri:          {idData.sataNcqPriority}")
+      writeln(&"  SATA Host Auto P2S:    {idData.sataHostAutoP2S}")
+      writeln(&"  SATA Dev Auto P2S:     {idData.sataDeviceAutoP2S}")
       

@@ -1,6 +1,6 @@
 import std/strformat
 
-import debug
+import console
 
 #[
   Port I/O
@@ -54,7 +54,7 @@ proc portIn32*(port: uint16): uint32 =
 
 proc idle*() {.cdecl.} =
   while true:
-    print("(i)")
+    # print("(i)")
     asm """
       hlt
     """
@@ -131,64 +131,64 @@ proc dumpControlRegisters*() =
 
   var cr0 = readCR0()
 
-  println("")
-  println(&"CR0 = {cr0:.>16x}h")
-  println(&"  .PE          Protection Enable                   {cr0 shr  0 and 1}")
-  println(&"  .MP          Monitor Coprocessor                 {cr0 shr  1 and 1}")
-  println(&"  .EM          Emulation                           {cr0 shr  2 and 1}")
-  println(&"  .TS          Task Switched                       {cr0 shr  3 and 1}")
-  println(&"  .TS          Extension Type                      {cr0 shr  4 and 1}")
-  println(&"  .NE          Numeric Error                       {cr0 shr  5 and 1}")
-  println(&"  .WP          Write Protect                       {cr0 shr 16 and 1}")
-  println(&"  .AM          Alignment Mask                      {cr0 shr 18 and 1}")
-  println(&"  .NW          Not Write-through                   {cr0 shr 29 and 1}")
-  println(&"  .CD          Cache Disable                       {cr0 shr 30 and 1}")
-  println(&"  .PG          Paging                              {cr0 shr 31 and 1}")
+  writeln("")
+  writeln(&"CR0 = {cr0:.>16x}h")
+  writeln(&"  .PE          Protection Enable                   {cr0 shr  0 and 1}")
+  writeln(&"  .MP          Monitor Coprocessor                 {cr0 shr  1 and 1}")
+  writeln(&"  .EM          Emulation                           {cr0 shr  2 and 1}")
+  writeln(&"  .TS          Task Switched                       {cr0 shr  3 and 1}")
+  writeln(&"  .TS          Extension Type                      {cr0 shr  4 and 1}")
+  writeln(&"  .NE          Numeric Error                       {cr0 shr  5 and 1}")
+  writeln(&"  .WP          Write Protect                       {cr0 shr 16 and 1}")
+  writeln(&"  .AM          Alignment Mask                      {cr0 shr 18 and 1}")
+  writeln(&"  .NW          Not Write-through                   {cr0 shr 29 and 1}")
+  writeln(&"  .CD          Cache Disable                       {cr0 shr 30 and 1}")
+  writeln(&"  .PG          Paging                              {cr0 shr 31 and 1}")
 
   ##  CPU: CR4 register
 
   var cr4 = readCR4()
 
-  println("")
-  println(&"CR4 = {cr4:.>16x}h")
-  println(&"  .VME         Virtual-8086 Mode Extensions        {cr4 shr  0 and 1}")
-  println(&"  .PVI         Protected-Mode Virtual Interrupts   {cr4 shr  1 and 1}")
-  println(&"  .TSD         Time Stamp Disable                  {cr4 shr  2 and 1}")
-  println(&"  .DE          Debugging Extensions                {cr4 shr  3 and 1}")
-  println(&"  .PSE         Page Size Extensions                {cr4 shr  4 and 1}")
-  println(&"  .PAE         Physical Address Extension          {cr4 shr  5 and 1}")
-  println(&"  .MCE         Machine-Check Enable                {cr4 shr  6 and 1}")
-  println(&"  .PGE         Page Global Enable                  {cr4 shr  7 and 1}")
-  println(&"  .PCE         Perf-Monitoring Counte Enable       {cr4 shr  8 and 1}")
-  println(&"  .OSFXR       OS Support for FXSAVE & FXRSTOR     {cr4 shr  9 and 1}")
-  println(&"  .OSXMMEXCPT  OS Support for Unmasked SIMD")
-  println(&"               Floating-Point Exceptions           {cr4 shr 10 and 1}")
-  println(&"  .UMIP        User-Mode Instruction Prevention    {cr4 shr 11 and 1}")
-  println(&"  .LA57        57-bit linear addresses             {cr4 shr 12 and 1}")
-  println(&"  .VMXE        VMX-Enable Bit                      {cr4 shr 13 and 1}")
-  println(&"  .SMXE        SMX-Enable Bit                      {cr4 shr 14 and 1}")
-  println(&"  .FSGSBASE    FSGSBASE-Enable Bit                 {cr4 shr 16 and 1}")
-  println(&"  .PCIDE       PCID-Enable Bit                     {cr4 shr 17 and 1}")
-  println(&"  .OSXSAVE     XSAVE and Processor Extended State-")
-  println(&"               Enable Bit                          {cr4 shr 18 and 1}")
-  println(&"  .KL          Key-Locker-Enable Bit               {cr4 shr 19 and 1}")
-  println(&"  .SMEP        SMEP-Enable Bit                     {cr4 shr 20 and 1}")
-  println(&"  .SMAP        SMAP-Enable Bit                     {cr4 shr 21 and 1}")
-  println(&"  .PKE         Enable protection keys for user-")
-  println(&"               mode pages                          {cr4 shr 22 and 1}")
-  println(&"  .CET         Control-flow Enforcement Technology {cr4 shr 23 and 1}")
-  println(&"  .PKS         Enable protection keys for")
-  println(&"               supervisor-mode pages               {cr4 shr 24 and 1}")
+  writeln("")
+  writeln(&"CR4 = {cr4:.>16x}h")
+  writeln(&"  .VME         Virtual-8086 Mode Extensions        {cr4 shr  0 and 1}")
+  writeln(&"  .PVI         Protected-Mode Virtual Interrupts   {cr4 shr  1 and 1}")
+  writeln(&"  .TSD         Time Stamp Disable                  {cr4 shr  2 and 1}")
+  writeln(&"  .DE          Debugging Extensions                {cr4 shr  3 and 1}")
+  writeln(&"  .PSE         Page Size Extensions                {cr4 shr  4 and 1}")
+  writeln(&"  .PAE         Physical Address Extension          {cr4 shr  5 and 1}")
+  writeln(&"  .MCE         Machine-Check Enable                {cr4 shr  6 and 1}")
+  writeln(&"  .PGE         Page Global Enable                  {cr4 shr  7 and 1}")
+  writeln(&"  .PCE         Perf-Monitoring Counte Enable       {cr4 shr  8 and 1}")
+  writeln(&"  .OSFXR       OS Support for FXSAVE & FXRSTOR     {cr4 shr  9 and 1}")
+  writeln(&"  .OSXMMEXCPT  OS Support for Unmasked SIMD")
+  writeln(&"               Floating-Point Exceptions           {cr4 shr 10 and 1}")
+  writeln(&"  .UMIP        User-Mode Instruction Prevention    {cr4 shr 11 and 1}")
+  writeln(&"  .LA57        57-bit linear addresses             {cr4 shr 12 and 1}")
+  writeln(&"  .VMXE        VMX-Enable Bit                      {cr4 shr 13 and 1}")
+  writeln(&"  .SMXE        SMX-Enable Bit                      {cr4 shr 14 and 1}")
+  writeln(&"  .FSGSBASE    FSGSBASE-Enable Bit                 {cr4 shr 16 and 1}")
+  writeln(&"  .PCIDE       PCID-Enable Bit                     {cr4 shr 17 and 1}")
+  writeln(&"  .OSXSAVE     XSAVE and Processor Extended State-")
+  writeln(&"               Enable Bit                          {cr4 shr 18 and 1}")
+  writeln(&"  .KL          Key-Locker-Enable Bit               {cr4 shr 19 and 1}")
+  writeln(&"  .SMEP        SMEP-Enable Bit                     {cr4 shr 20 and 1}")
+  writeln(&"  .SMAP        SMAP-Enable Bit                     {cr4 shr 21 and 1}")
+  writeln(&"  .PKE         Enable protection keys for user-")
+  writeln(&"               mode pages                          {cr4 shr 22 and 1}")
+  writeln(&"  .CET         Control-flow Enforcement Technology {cr4 shr 23 and 1}")
+  writeln(&"  .PKS         Enable protection keys for")
+  writeln(&"               supervisor-mode pages               {cr4 shr 24 and 1}")
 
   ##  CPU: IA32_EFER register
 
   var efer = readMSR(0xC0000080'u32)  # EFER
-  println("")
-  println(&"IA32_EFER = {efer:.>16x}h")
-  println(&"  .SCE         SYSCALL Enable                      {efer shr  0 and 1}")
-  println(&"  .LME         IA-32e Mode Enable                  {efer shr  8 and 1}")
-  println(&"  .LMA         IA-32e Mode Active                  {efer shr 10 and 1}")
-  println(&"  .NXE         Execute Disable Bit Enable          {efer shr 11 and 1}")
+  writeln("")
+  writeln(&"IA32_EFER = {efer:.>16x}h")
+  writeln(&"  .SCE         SYSCALL Enable                      {efer shr  0 and 1}")
+  writeln(&"  .LME         IA-32e Mode Enable                  {efer shr  8 and 1}")
+  writeln(&"  .LMA         IA-32e Mode Active                  {efer shr 10 and 1}")
+  writeln(&"  .NXE         Execute Disable Bit Enable          {efer shr 11 and 1}")
 
 
 type
@@ -279,16 +279,16 @@ proc dumpCpuid*() =
   vendor &= registerToString(edx)
   vendor &= registerToString(ecx)
 
-  println("")
-  println("CPUID")
-  println(&"  Vendor:                    {vendor}")
-  println(&"  Highest Basic Function:    {eax:0>2x}h")
+  writeln("")
+  writeln("CPUID")
+  writeln(&"  Vendor:                    {vendor}")
+  writeln(&"  Highest Basic Function:    {eax:0>2x}h")
 
   ## Extended Function 0x80000000
 
   eax = 0x80000000'u32
   cpuid(addr eax, addr ebx, addr ecx, addr edx)
-  println(&"  Highest Extended Function: {eax:0>2x}h")
+  writeln(&"  Highest Extended Function: {eax:0>2x}h")
 
   ## Function 1
 
@@ -304,12 +304,12 @@ proc dumpCpuid*() =
     model += (eax shr 16 and 0xf) shl 4
   var stepping = eax and 0xf
 
-  println("")
-  println(&"  Processor Type:            {procType:0>2x}h")
-  println(&"  Family ID:                 {family:0>2x}h")
-  println(&"  Model ID:                  {model:0>2x}h")
-  println(&"  Stepping ID:               {stepping:1x}h")
+  writeln("")
+  writeln(&"  Processor Type:            {procType:0>2x}h")
+  writeln(&"  Family ID:                 {family:0>2x}h")
+  writeln(&"  Model ID:                  {model:0>2x}h")
+  writeln(&"  Stepping ID:               {stepping:1x}h")
 
-  println("")
-  println(&"  Feature Info in ECX: {cast[CpuIdFeaturesEcx](ecx)}")
-  println(&"  Feature Info in EDX: {cast[CpuIdFeaturesEdx](edx)}")
+  writeln("")
+  writeln(&"  Feature Info in ECX: {cast[CpuIdFeaturesEcx](ecx)}")
+  writeln(&"  Feature Info in EDX: {cast[CpuIdFeaturesEdx](edx)}")

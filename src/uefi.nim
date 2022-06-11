@@ -2,7 +2,7 @@ import std/strformat
 import std/tables
 
 import lib/guid
-import debug
+import console
 import uefitypes
 
 const
@@ -17,18 +17,21 @@ const
   EfiAcpi2TableGuid*             = parseGuid("8868e871-e4f1-11d3-22bc-0080c73c8881")
   EfiMemoryAttributesTableGuid*  = parseGuid("dcfa911d-26eb-469f-20a2-38b7dc461220")
 
-let efiGuids = {
-  EfiLzmaCustomDecompressGuid   : ("LZMA_CUSTOM_DECOMPRESS_GUID", "LZMA Custom Decompress"),
-  EfiDxeServicesTableGuid       : ("DXE_SERVICES_TABLE_GUID", "DXE Services Table"),
-  EfiHobListGuid                : ("HOB_LIST_GUID", "HOB (Hand-Off Block) List"),
-  EfiMemoryTypeInfoGuid         : ("EFI_MEMORY_TYPE_INFORMATION_GUID", "Memory Type Information"),
-  EfiDebugImageInfoTableGuid    : ("EFI_DEBUG_IMAGE_INFO_TABLE_GUID", "Debug Image Info Table"),
-  EfiMemoryStatusCodeRecordGuid : ("MEMORY_STATUS_CODE_RECORD_GUID", "Memory Status Code Record"),
-  EfiSmbiosTableGuid            : ("SMBIOS_TABLE_GUID", "SMBIOS Table"),
-  EfiAcpi1TableGuid             : ("ACPI_TABLE_GUID", "ACPI 1.0 Table"),
-  EfiAcpi2TableGuid             : ("EFI_ACPI_TABLE_GUID", "ACPI 2.0+ Table"),
-  EfiMemoryAttributesTableGuid  : ("EFI_MEMORY_ATTRIBUTES_TABLE_GUID", "Memory Attributes Table"),
-}.toTable
+var efiGuids: Table[Guid, tuple[id: string, name: string]]
+
+proc initEfiGuids*() =
+  efiGuids = {
+    EfiLzmaCustomDecompressGuid   : ("LZMA_CUSTOM_DECOMPRESS_GUID", "LZMA Custom Decompress"),
+    EfiDxeServicesTableGuid       : ("DXE_SERVICES_TABLE_GUID", "DXE Services Table"),
+    EfiHobListGuid                : ("HOB_LIST_GUID", "HOB (Hand-Off Block) List"),
+    EfiMemoryTypeInfoGuid         : ("EFI_MEMORY_TYPE_INFORMATION_GUID", "Memory Type Information"),
+    EfiDebugImageInfoTableGuid    : ("EFI_DEBUG_IMAGE_INFO_TABLE_GUID", "Debug Image Info Table"),
+    EfiMemoryStatusCodeRecordGuid : ("MEMORY_STATUS_CODE_RECORD_GUID", "Memory Status Code Record"),
+    EfiSmbiosTableGuid            : ("SMBIOS_TABLE_GUID", "SMBIOS Table"),
+    EfiAcpi1TableGuid             : ("ACPI_TABLE_GUID", "ACPI 1.0 Table"),
+    EfiAcpi2TableGuid             : ("EFI_ACPI_TABLE_GUID", "ACPI 2.0+ Table"),
+    EfiMemoryAttributesTableGuid  : ("EFI_MEMORY_ATTRIBUTES_TABLE_GUID", "Memory Attributes Table"),
+  }.toTable
 
 proc getUefiConfigTables*(st: ptr EfiSystemTable): Table[Guid, pointer] =
   for i in 0 ..< st.numTableEntries:
@@ -38,9 +41,10 @@ proc getUefiConfigTables*(st: ptr EfiSystemTable): Table[Guid, pointer] =
 proc dumpUefiConfigTables*(st: ptr EfiSystemTable) =
   let configTables = getUefiConfigTables(st)
 
-  println("")
-  println("UEFI Configuration Table")
+  writeln("")
+  writeln("UEFI Configuration Table")
   for guid, p in configTables.pairs:
-    print(&"  {$guid}")
+    write(&"  {$guid}")
     if efiGuids.contains(guid):
-      print(&"  {efiGuids[guid][1]}")
+      write(&"  {efiGuids[guid][1]}")
+    writeln("")

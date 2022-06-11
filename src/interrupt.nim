@@ -1,10 +1,10 @@
 import std/strformat
 
-import debug
+import console
 
 const
   KernelDataSegment = 0x30
-  KernelCodeSegment = 0x38
+  # KernelCodeSegment = 0x38
 
 type
   InterruptFrame {.packed.} = object
@@ -16,7 +16,7 @@ type
     rip, cs, eflags, esp, ss: uint64
 
 proc handleInterrupt*(intFrame: InterruptFrame) {.cdecl, exportc.} =
-  print(&" int[{intFrame.vector}] ")
+  write(&" int[{intFrame.vector}] ")
 
 proc isr00*(intFrame: pointer) {.asmNoStackFrame, cdecl.} =
   asm """

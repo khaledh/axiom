@@ -1,4 +1,5 @@
 import bitops
+import std/strformat
 
 import font
 import framebuffer
@@ -14,10 +15,6 @@ const
   Blue* = 0x608aaf
   Blueish* = 0x4a8e97
 
-# circular buffer
-var backbuffer {.align(16).}: array[1024*1280, uint32]
-var backbufferStart: int
-
 type
   Console* = object
     fb: Framebuffer
@@ -29,18 +26,28 @@ type
     currCol: int
     currRow: int
     backColor: uint32
-    tick: uint64
+    # tick: uint64
 
-proc initConsole*(fb: Framebuffer, left, top: int, font: Font16, maxCols, maxRows: int, currCol, currRow: int = 0, color: uint32 = 0): Console =
+var
+  conOut*: Console
+  # circular buffer
+  backbuffer {.align(16).}: array[1024*1280, uint32]
+  backbufferStart: int
+
+
+proc initConsole*(fb: Framebuffer, left, top: int, font: Font16, maxCols, maxRows: int, currCol, currRow: int = 0, color: uint32 = 0) =
   backbufferStart = 0
   for i in 0 ..< 1024*1280:
       backbuffer[i] = color
-  Console(fb: fb, left: left, top: top, font: font, maxCols: maxCols, maxRows: maxRows, currCol: currCol, currRow: currRow, backColor: color)
+  conOut = Console(fb: fb, left: left, top: top, font: font, maxCols: maxCols, maxRows: maxRows, currCol: currCol, currRow: currRow, backColor: color)
 
-proc flush*(con: Console) =
+proc flush*(con: Console) {.locks: 0.} =
   con.fb.copyBuffer(cast [ptr UncheckedArray[uint32]](addr backbuffer), backbufferStart)
 
-proc scrollUp(con: var Console) =
+proc flush*() {.locks: 0.} =
+  flush(conOut)
+
+proc scrollUp(con: var Console) {.locks: 0.} =
   # move pointer down in the circular buffer to indicate the new start line
   backbufferStart = (backbufferStart + 16) mod 1024
 
@@ -50,37 +57,78 @@ proc scrollUp(con: var Console) =
       backbuffer[i] = con.backColor
 
   dec(con.currRow)
+  # flush(con)
 
-proc write*(con: var Console, str: string, color: uint32 = DefaultForeground) =
+proc putCharAt*(con: Console, ch: char, row, col: int, color: uint32 = DefaultForeground) =
+  var xpos = con.left + col * con.font.width
+  var ypos = con.top + row * con.font.height
+
+  # bitblt the glyph
+  let glyph = con.font.glyphs[ch.uint8]
+  for yoff, row in glyph:
+    for xoff in 1..8:
+      let clr = if (rotateLeftBits(row, xoff) and 1) == 1: color else: con.backColor
+      backbuffer[(((backbufferStart + ypos + yoff) mod 1024) * 1280) + xpos + xoff - 1] = clr
+
+  # flush(con)
+
+proc putCharAt*(ch: char, row, col: int, color: uint32 = DefaultForeground) =
+  conOut.putCharAt(ch, row, col, color)
+
+proc putChar*(con: Console, ch: char, color: uint32 = DefaultForeground) =
+  putCharAt(con, ch, con.currRow, con.currCol, color)
+
+proc putChar*(ch: char, color: uint32 = DefaultForeground) =
+  putCharAt(conOut, ch, conOut.currRow, conOut.currCol, color)
+
+proc newLine(con: var Console) =
+  con.currCol = 0
+  inc(con.currRow)
+  if con.currRow >= con.maxRows:
+    con.scrollUp()
+
+  # flush(con)
+
+proc write*(con: var Console, str: string, color: uint32 = DefaultForeground) {.locks: 0.} =
   for i, ch in str:
     if ch == '\n':
-      con.currCol = 0
-      inc(con.currRow)
-      if con.currRow >= con.maxRows:
-        scrollUp(con)
-      continue
+      # clear cursor
+      con.putChar(' ')
+      con.newLine()
+    elif ch == '\b':
+      if con.currCol > 0:
+        con.putChar(' ')
+        dec(con.currCol)
+        con.putChar(' ')
+    else:
+      putChar(con, ch, color)
+      inc(con.currCol)
+      if con.currCol >= con.maxCols:
+        con.newLine()
 
-    var xpos = con.left + con.currCol * con.font.width
-    var ypos = con.top + con.currRow * con.font.height
+  # cursor
+  con.putChar('_')
 
-    let glyph = con.font.glyphs[ch.uint8]
-    for yoff, row in glyph:
-      for xoff in 1..8:
-        if (rotateLeftBits(row, xoff) and 1) == 1:
-          backbuffer[(((backbufferStart + ypos + yoff) mod 1024) * 1280) + xpos + xoff - 1] = color
-
-    inc(con.currCol)
-    if con.currCol >= con.maxCols:
-      con.currCol = 0
-      inc(con.currRow)
-
-      if con.currRow >= con.maxRows:
-        scrollUp(con)
-
-  if con.tick mod 5 == 0:
-    con.flush()
-
-  inc(con.tick)
+proc write*(str: string, color: uint32 = DefaultForeground) =
+  write(conOut, str, color)
 
 proc writeln*(con: var Console, str: string, color: uint32 = DefaultForeground) =
-  con.write(str & "\n", color)
+  write(con, str & "\n", color)
+  # flush(con)
+
+proc writeln*(str: string, color: uint32 = DefaultForeground) =
+  writeln(conOut, str, color)
+
+
+
+proc dumpFont*() =
+  writeln("")
+  writeln(&"PSF Font: Dina 8x16")
+  writeln(&"  Magic    = {dina8x16[0]:0>2x} {dina8x16[1]:0>2x} {dina8x16[2]:0>2x} {dina8x16[3]:0>2x}")
+  writeln(&"  Version  = {cast[ptr uint32](addr dina8x16[4])[]}")
+  writeln(&"  HdrSize  = {cast[ptr uint32](addr dina8x16[8])[]}")
+  writeln(&"  Flags    = {cast[ptr uint32](addr dina8x16[12])[]}")
+  writeln(&"  Length   = {cast[ptr uint32](addr dina8x16[16])[]}")
+  writeln(&"  CharSize = {cast[ptr uint32](addr dina8x16[20])[]}")
+  writeln(&"  Height   = {cast[ptr uint32](addr dina8x16[24])[]}")
+  writeln(&"  Width    = {cast[ptr uint32](addr dina8x16[28])[]}")
