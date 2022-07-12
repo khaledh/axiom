@@ -146,7 +146,7 @@ proc setTimer*(vector: uint8) =
 proc eoi*() =
   writeRegister(LapicOffset.Eoi, 0)
 
-proc dump*() =
+proc show*() =
   let baseMsr = cast[Ia32ApicBaseMsr](readMSR(0x1b))
 
   writeln("")

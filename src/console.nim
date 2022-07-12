@@ -121,7 +121,7 @@ proc writeln*(str: string, color: uint32 = DefaultForeground) =
 
 
 
-proc dumpFont*() =
+proc showFont*() =
   writeln("")
   writeln(&"PSF Font: Dina 8x16")
   writeln(&"  Magic    = {dina8x16[0]:0>2x} {dina8x16[1]:0>2x} {dina8x16[2]:0>2x} {dina8x16[3]:0>2x}")

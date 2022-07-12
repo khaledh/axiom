@@ -3,7 +3,7 @@ import std/strformat
 import ../debug
 import ../uefitypes
 
-proc dumpGop*(gop: ptr EfiGraphicsOutputProtocol) =
+proc showGop*(gop: ptr EfiGraphicsOutputProtocol) =
   println("")
   println("Graphics Output Protocol")
   println(&"  Current Mode    = {gop.mode.currentMode} (Max Mode={gop.mode.maxMode})")

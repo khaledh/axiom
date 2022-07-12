@@ -4,7 +4,7 @@ import console
 import cpu
 import uefitypes
 
-proc dumpMemoryMap*(bs: ptr EfiBootServices): uint =
+proc showMemoryMap*(bs: ptr EfiBootServices): uint =
   var mapSize: uint = 0
   var memoryMap: ptr UncheckedArray[EfiMemoryDescriptor]
   var mapKey: uint

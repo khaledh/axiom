@@ -66,7 +66,7 @@ var
   ioapic0: ioapic.Ioapic
   lineBuffer: string
 
-proc dumpHelp() =
+proc showHelp() =
   writeln("Commands")
   writeln("")
   writeln("  ping          Respond with 'pong'")
@@ -93,45 +93,45 @@ proc dumpHelp() =
 proc dispatchCommand(cmd: string) =
   case cmd:
   of "help":
-    dumpHelp()
+    showHelp()
   of "ping":
     writeln("pong")
   of "rsdp":
-    dumpRsdp(rsdp)
+    showRsdp(rsdp)
   of "xsdt":
-    dumpXsdt(xsdt0)
+    showXsdt(xsdt0)
   of "fadt":
-    dumpFadt(fadt0)
+    showFadt(fadt0)
   of "madt":
-    dumpMadt(madt0)
+    showMadt(madt0)
   of "idt":
-    dumpIdt()
+    showIdt()
   of "gdt":
-    dumpGdt()
+    showGdt()
   of "lapic":
-    lapic.dump()
+    lapic.show()
   of "ioapic":
-    ioapic0.dump()
+    ioapic0.show()
   of "pci":
-    dumpPciConfig()
+    showPciConfig()
   of "ahci":
-    dumpAhci(bus=0, dev=0x1f, fn=2, sysTable.bootServices)
+    showAhci(bus=0, dev=0x1f, fn=2, sysTable.bootServices)
   of "font":
-    dumpFont()
+    showFont()
   of "cpuid":
-    dumpCpuid()
+    showCpuid()
   of "ctlreg":
-    dumpControlRegisters()
+    showControlRegisters()
   of "memory":
-    discard dumpMemoryMap(sysTable.bootServices)
+    discard showMemoryMap(sysTable.bootServices)
   of "paging":
-    dumpPagingTables()
+    showPagingTables()
   of "firmware":
-    dumpFirmwareVersion(sysTable)
+    showFirmwareVersion(sysTable)
   of "uefi tables":
-    dumpUefiConfigTables(sysTable)
+    showUefiConfigTables(sysTable)
   of "uefi text":
-    dumpSimpletext(sysTable.conOut)
+    showSimpletext(sysTable.conOut)
   of "shutdown":
     writeln("Shutting down")
     shutdown()
@@ -177,7 +177,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   # var igop: pointer
   # discard sysTable.bootServices.locateProtocol(unsafeAddr GOP_GUID, nil, addr igop)
   # var gop = cast[ptr EfiGraphicsOutputProtocol](igop)
-  # dumpGop(gop)
+  # showGop(gop)
 
   # discard gop.setMode(gop, 14)  # 1280x1024
   # var fb = initFramebuffer(gop.mode.frameBufferBase, width=1280, height=1024)
@@ -226,7 +226,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
     let xsdt = initXsdt(rsdp)
     xsdt0 = xsdt
-    # dumpXsdt(xsdt)
+    # showXsdt(xsdt)
 
     var hdr = xsdt.entries.getOrDefault(['F', 'A', 'C', 'P'])
     if not isNil(hdr):

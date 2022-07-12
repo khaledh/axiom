@@ -3,7 +3,7 @@ import std/strformat
 import console
 import uefitypes
 
-proc dumpFirmwareVersion*(sysTable: ptr EfiSystemTable) =
+proc showFirmwareVersion*(sysTable: ptr EfiSystemTable) =
   let uefiMajor = sysTable.header.revision shr 16
   let uefiMinor = sysTable.header.revision and 0xffff
   let fwMajor = sysTable.firmwareRevision shr 16

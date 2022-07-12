@@ -164,7 +164,7 @@ proc pciNextCapability*(bus, dev, fn, offset: uint8): tuple[capValue: uint8, nex
   result = (capValue, nextOffset)
 
 
-proc dumpPciDeviceFunction(bus, dev, fn: uint8) =
+proc showPciDeviceFunction(bus, dev, fn: uint8) =
 
   let
     pciId = pciConfigRead32(bus, dev, fn, 0)
@@ -206,7 +206,7 @@ proc dumpPciDeviceFunction(bus, dev, fn: uint8) =
 
   writeln("")
 
-proc dumpPciDevice(bus, dev: uint8) =
+proc showPciDevice(bus, dev: uint8) =
   let vendorId = pciConfigRead16(bus, dev, 0, 0)
   if vendorId == 0xffff:
     return
@@ -216,19 +216,19 @@ proc dumpPciDevice(bus, dev: uint8) =
 
   writeln("")
 
-  dumpPciDeviceFunction(bus, dev, 0)
+  showPciDeviceFunction(bus, dev, 0)
   if isMultiFunction == 1:
     for f in 1.uint8..7:
       let vendorId = pciConfigRead16(bus, dev, f, 0)
       if vendorId == 0xffff:
         continue
-      dumpPciDeviceFunction(bus, dev, f)
+      showPciDeviceFunction(bus, dev, f)
 
-proc dumpPciConfig*() =
+proc showPciConfig*() =
   writeln("")
   writeln("PCI Configuration")
 
-  dumpPciDevice(0, 0)
+  showPciDevice(0, 0)
 
   for dev in 1.uint8 ..< 32:
-    dumpPciDevice(0, dev)
+    showPciDevice(0, dev)

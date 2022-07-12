@@ -3,7 +3,7 @@ import std/strformat
 import ../console
 import ../uefitypes
 
-proc dumpSimpleText*(conOut: ptr SimpleTextOutputInterface) =
+proc showSimpleText*(conOut: ptr SimpleTextOutputInterface) =
   writeln("")
   writeln("Simple Text Output Protocol")
   writeln(&"  Current Mode    = {conOut.mode.currentMode} (Max Mode={conOut.mode.maxMode})")

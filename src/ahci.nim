@@ -247,7 +247,7 @@ type
     control                    : uint8   # Control
     rsv1                       : uint32  # Reserved
 
-proc dumpAhci*(bus, dev, fn: uint8, bs: ptr EfiBootServices) =
+proc showAhci*(bus, dev, fn: uint8, bs: ptr EfiBootServices) =
   writeln("")
   writeln("AHCI")
   writeln("")

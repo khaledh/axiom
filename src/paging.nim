@@ -23,7 +23,7 @@ import cpu
   #   protKey    {.bitsize:  4.}: uint64  # bits 62:59
   #   xd         {.bitsize:  1.}: uint64  # bit    63
 
-proc dumpPagingTables*() =
+proc showPagingTables*() =
   var cr3 = readCR3()
   let pml4addr = cr3 and 0xfffffff000'u64
 

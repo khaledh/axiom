@@ -33,7 +33,7 @@ type
 
 proc initIoapic*(madt: ptr Madt): Ioapic
 proc setRedirEntry*(ioapic: Ioapic, irq: uint8, vector: uint8)
-proc dump*(ioapic: Ioapic)
+proc show*(ioapic: Ioapic)
 
 ###############################################################################
 # private
@@ -97,7 +97,7 @@ proc setRedirEntry(ioapic: Ioapic, irq: uint8, vector: uint8) =
   ioapic.writeRegister(regIndex + 0, cast[uint32](cast[uint64](entry) and 0xffff))
   ioapic.writeRegister(regIndex + 1, cast[uint32](cast[uint64](entry) shr 32))
 
-proc dump*(ioapic: Ioapic) =
+proc show*(ioapic: Ioapic) =
   writeln("")
   writeln("I/O APIC")
 

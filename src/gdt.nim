@@ -22,7 +22,7 @@ type
     limit: uint16
     base: uint64
 
-proc dumpGdt*() =
+proc showGdt*() =
   var gdt_desc: GdtDescriptor
 
   asm """

@@ -34,7 +34,7 @@ proc initXsdt*(rsdp: ptr Rsdp): Xsdt =
     let tableHdr = cast[ptr TableDescriptionHeader](tablePtrLoc[])
     result.entries[tableHdr.signature] = tableHdr
 
-proc dumpXsdt*(xsdt: Xsdt) =
+proc showXsdt*(xsdt: Xsdt) =
   writeln("")
   writeln("XSDT")
   writeln(&"  Revision: {xsdt.hdr.revision}h")

@@ -101,7 +101,7 @@ proc resumeThread*() {.asmNoStackFrame, exportc.} =
     ret
   """
 
-proc dumpThreads*() =
+proc showThreads*() =
   # for i in 0..<len(threads):
   var thTemp = thHead
   writeln(&"id={thTemp.id}, addr={cast[uint64](thTemp):x}h, state={thTemp.state}, state={cast[uint64](thTemp.state):x}h")
@@ -117,7 +117,7 @@ proc jumpToThread*(thread: Thread) {.cdecl.} =
   thCurr = thread
   thCurr.state = tsRunning
 
-  # dumpThreads()
+  # showThreads()
   # writeln(&"thCurr.id = {thCurr.id}, thCurr @ {cast[uint64](thCurr):x}")
   asm """
     mov rsp, %0
@@ -128,7 +128,7 @@ proc jumpToThread*(thread: Thread) {.cdecl.} =
 
 proc schedule*() =
   # writeln("(s)")
-  # dumpThreads()
+  # showThreads()
 
 
   # writeln(&"thCurr.id: {thCurr.id:x}h, thCurr @ {cast[uint64](thCurr):x}")
@@ -249,7 +249,7 @@ proc startThread*(thread: Thread) =
   # writeln(&"setting thread[{thread.id}] to ready")
   thread.state = tsReady
 
-  # dumpThreads()
+  # showThreads()
 
 proc initThreads*() =
   nextAvailableId = 0

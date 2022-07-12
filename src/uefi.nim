@@ -38,7 +38,7 @@ proc getUefiConfigTables*(st: ptr EfiSystemTable): Table[Guid, pointer] =
     let entry = st.configTable[i]
     result[entry.vendorGuid] = entry.vendorTable
 
-proc dumpUefiConfigTables*(st: ptr EfiSystemTable) =
+proc showUefiConfigTables*(st: ptr EfiSystemTable) =
   let configTables = getUefiConfigTables(st)
 
   writeln("")

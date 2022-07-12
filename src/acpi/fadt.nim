@@ -102,7 +102,7 @@ proc `$`(ga: GenericAddress): string =
 proc parseFadt*(p: pointer): ptr Fadt =
   result = cast[ptr Fadt](p)
 
-proc dumpFadt*(fadt: ptr Fadt) =
+proc showFadt*(fadt: ptr Fadt) =
     writeln("")
     writeln("FADT (Fixed ACPI Description Table)")
 

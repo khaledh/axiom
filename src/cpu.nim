@@ -125,7 +125,7 @@ proc cpuid*(eax, ebx, ecx, edx: ptr uint32) =
 ## Debug
 ##
 
-proc dumpControlRegisters*() =
+proc showControlRegisters*() =
 
   ##  CPU: CR0 register
 
@@ -260,7 +260,7 @@ type
     res3        {.bitsize: 1.}: uint32
     pbe         {.bitsize: 1.}: uint32
 
-proc dumpCpuid*() =
+proc showCpuid*() =
   var eax, ebx, ecx, edx: uint32
 
   ## Function 0

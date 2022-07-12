@@ -36,7 +36,7 @@ proc setInterruptHandler*(vector: uint8, handler: proc (intFrame: pointer) {.cde
   intDesc.offset16 = uint16(handlerAddr shr 16 and 0xffff'u64)
   intDesc.offset32 = uint32(handlerAddr shr 32)
 
-proc dumpIdt*() =
+proc showIdt*() =
   writeln("")
   writeln("IDT (Interrupt Descritpor Table)")
   writeln(&"  IDT Base  = {idt_desc.base:0>16x}h")

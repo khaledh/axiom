@@ -25,7 +25,7 @@ type
     creator_id*: array[4, uint8]
     creator_revision*: uint32
 
-proc dumpRsdp*(rsdp: ptr Rsdp) =
+proc showRsdp*(rsdp: ptr Rsdp) =
   writeln("")
   writeln("RSDP")
   writeln(&"  Revision: {rsdp.revision:x}")

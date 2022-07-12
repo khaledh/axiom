@@ -132,7 +132,7 @@ iterator lapicNMIs*(madt: ptr Madt): ptr LocalApicNmi =
       yield cast[ptr LocalApicNmi](intCtrlStruct)
 
 
-proc dumpMadt*(madt: ptr Madt) =
+proc showMadt*(madt: ptr Madt) =
   writeln("")
   writeln("MADT (Multiple APIC Description Table)")
   writeln(&"  Local APIC Address: {madt.lapicAddress:0>8x}")
