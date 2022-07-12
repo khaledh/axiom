@@ -139,7 +139,7 @@ const
 proc setTimer*(vector: uint8) =
   writeRegister(LapicOffset.TimerDivideConfig, DivideBy16)
   # writeRegister(LapicOffset.TimerInitialCount, 4375000)
-  writeRegister(LapicOffset.TimerInitialCount, 200_000)
+  writeRegister(LapicOffset.TimerInitialCount, 150_000)
   writeRegister(LapicOffset.LvtTimer, vector.uint32 or (0x01 shl 17))
 
 # End of Interrupt

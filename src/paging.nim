@@ -3,25 +3,25 @@ import std/strformat
 import console
 import cpu
 
-# type
-  # PageDirectoryPointerEntry {.packed.} = object
-  #   present    {.bitsize:  1.}: uint64  # bit      0
-  #   write      {.bitsize:  1.}: uint64  # bit      1
-  #   supervisor {.bitsize:  1.}: uint64  # bit      2
-  #   pwt        {.bitsize:  1.}: uint64  # bit      3
-  #   pcd        {.bitsize:  1.}: uint64  # bit      4
-  #   accessed   {.bitsize:  1.}: uint64  # bit      5
-  #   dirty      {.bitsize:  1.}: uint64  # bit      6
-  #   pageSize   {.bitsize:  1.}: uint64  # bit      7
-  #   global     {.bitsize:  1.}: uint64  # bit      8
-  #   ignored1   {.bitsize:  3.}: uint64  # bits 11: 9
-  #   pat        {.bitsize:  1.}: uint64  # bit     12
-  #   reserved1  {.bitsize: 17.}: uint64  # bits 29:13
-  #   phyAddress {.bitsize: 10.}: uint64  # bits 39:30
-  #   reserved2  {.bitsize: 12.}: uint64  # bits 51:40
-  #   ignored2   {.bitsize: 11.}: uint64  # bits 58:52
-  #   protKey    {.bitsize:  4.}: uint64  # bits 62:59
-  #   xd         {.bitsize:  1.}: uint64  # bit    63
+type
+  PageDirectoryPointerEntry {.packed.} = object
+    present    {.bitsize:  1.}: uint64  # bit      0
+    write      {.bitsize:  1.}: uint64  # bit      1
+    supervisor {.bitsize:  1.}: uint64  # bit      2
+    pwt        {.bitsize:  1.}: uint64  # bit      3
+    pcd        {.bitsize:  1.}: uint64  # bit      4
+    accessed   {.bitsize:  1.}: uint64  # bit      5
+    dirty      {.bitsize:  1.}: uint64  # bit      6
+    pageSize   {.bitsize:  1.}: uint64  # bit      7
+    global     {.bitsize:  1.}: uint64  # bit      8
+    ignored1   {.bitsize:  3.}: uint64  # bits 11: 9
+    pat        {.bitsize:  1.}: uint64  # bit     12
+    reserved1  {.bitsize: 17.}: uint64  # bits 29:13
+    phyAddress {.bitsize: 10.}: uint64  # bits 39:30
+    reserved2  {.bitsize: 12.}: uint64  # bits 51:40
+    ignored2   {.bitsize: 11.}: uint64  # bits 58:52
+    protKey    {.bitsize:  4.}: uint64  # bits 62:59
+    xd         {.bitsize:  1.}: uint64  # bit    63
 
 proc showPagingTables*() =
   var cr3 = readCR3()
@@ -60,12 +60,14 @@ proc showPagingTables*() =
       pdpTableAddrs &= phyAddr
 
 
-  # writeln("")
-  # writeln("  Page Directory Pointer Tables")
-  # writeln("")
-  # for pdpTableAddr in pdpTableAddrs:
-  #   for i in 0..<512:
-  #     let pdpte = cast[ptr PageDirectoryPointerEntry](pdpTableAddr + i.uint64 * 64)
-  #     if pdpte.present == 1 and pdpte.reserved1 == 0 and pdpte.reserved2 == 0:
-  #       writeln(&"  [{i:>3}]  PhyAddress={pdpte.phyAddress shl 30:0>10x}  PS={pdpte.pageSize}  Write={pdpte.write}  User/Supervisor={pdpte.supervisor}  Accessed={pdpte.accessed}  Dirty={pdpte.dirty}  XD={pdpte.xd}")
-  #   writeln("")
+  writeln("")
+  writeln("  Page Directory Pointer Tables (showing first 10 only)")
+  writeln("")
+  for j, pdpTableAddr in pdpTableAddrs:
+    # for i in 0..<512:
+    writeln(&"  Page Directory Pointer Table [{j}]")
+    for i in 0..<10:
+      let pdpte = cast[ptr PageDirectoryPointerEntry](pdpTableAddr + i.uint64 * 64)
+      if pdpte.present == 1 and pdpte.reserved1 == 0 and pdpte.reserved2 == 0:
+        writeln(&"  [{i:>3}]  PhyAddress={pdpte.phyAddress shl 30:0>10x}  PS={pdpte.pageSize}  Write={pdpte.write}  User/Supervisor={pdpte.supervisor}  Accessed={pdpte.accessed}  Dirty={pdpte.dirty}  XD={pdpte.xd}")
+    writeln("")
