@@ -1,36 +1,17 @@
-import std/strformat
-
 import console
 import cpu
 import idt
-import lapic as lapic
-import task
+import lapic
+import sched
+import threaddef
 
-var
-  ticks: uint64
-  ticksSpinner: uint64
-
-proc thread3() {.cdecl.} =
-  for i in 0..<40:
-    write("-")
-    for i in 0..250000:
-      asm "pause"
-
-proc thread4() {.cdecl.} =
-  for i in 0..<20:
-    write("x")
-    for i in 0..250000:
-      asm "pause"
-
-const
-  spinner = ['-', '\\', '|', '/']
+var ticks: uint64
 
 proc timerInterruptHandler*(intFrame: pointer)
     {.cdecl, codegenDecl: "__attribute__ ((interrupt)) $# $#$#".} =
 
-  if ticks mod 20 == 0:
-    putCharAt(spinner[ticksSpinner mod len(spinner)], 61, 156)
-    inc(ticksSpinner)
+  # if ticks mod 250 == 0 and ticks < 2000:
+  #   showThreads()
 
   if ticks mod 10 == 0:
     # write(&"{(ticks div 10) mod 10}")
@@ -38,20 +19,16 @@ proc timerInterruptHandler*(intFrame: pointer)
 
   inc(ticks)
 
-  # let rsp = addr stack0[StackSize - 8]
-  # writeln(&"rsp = {cast[uint64](rsp):x}")
-  # writeln(&"rsp[] = {rsp[]:x}")
-
   lapic.eoi()
 
   # if ticks == 20:
-  #   createThread(thread3).startThread()
+  #   createThread(thread3).start()
 
   # if ticks == 22:
-  #   createThread(thread4).startThread()
+  #   createThread(thread4).start()
 
   if ticks mod 10 == 0:
-    schedule()
+    schedule(tsReady)
 
 proc initTimer*() =
   ticks = 0

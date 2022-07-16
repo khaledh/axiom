@@ -13,7 +13,9 @@ import ioapic
 import keyboard
 import lapic
 import shell
-import task
+import sched
+import thread
+import threaddef
 import timer
 import uefi, uefitypes
 import lib/[libc, malloc]
@@ -31,6 +33,20 @@ proc printError(msg: string) =
 
 proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =
   printError(e.msg)
+
+
+
+proc spinner() {.cdecl.} =
+  const spinner = ['-', '\\', '|', '/']
+  var index = 0
+
+  while true:
+    # if ticks mod 250_000 == 0:
+      putCharAt(spinner[index mod len(spinner)], 61, 156)
+      inc index
+      sleep()
+    # inc ticks
+    # asm "pause"
 
 
 proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.exportc.} =
@@ -129,33 +145,27 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
     Pic2DataPort = 0xA1
 
   # # mask all interrupts
-  portOut8(Pic1DataPort, 0xff);
-  portOut8(Pic2DataPort, 0xff);
+  portOut8(Pic1DataPort, 0xff)
+  portOut8(Pic2DataPort, 0xff)
 
   initIdt()
   initKeyboard(keyHandler)
   initTimer()
 
   writeln("Welcome to AxiomOS")
-
-  # halt()
+  writeln("")
+  write("] ")
 
   initThreads()
-
-  let t0 = createThread(idle, ThreadPriority.low)
-  t0.startThread()
-
-  # let t1 = createThread(thread1)
-  # let t2 = createThread(thread2)
-
-  # t1.startThread()
-  # t2.startThread()
+  initScheduler()
 
   # let t1 = createThread(shell.start)
 
+  createThread(spinner).start()
 
-  writeln("")
-  write("] ")
+  # idle thread
+  var t0 = createThread(idle, ThreadPriority.low)
+  t0.state = tsRunning
   jumpToThread(t0)
 
 

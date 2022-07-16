@@ -54,7 +54,6 @@ proc portIn32*(port: uint16): uint32 =
 
 proc idle*() {.cdecl.} =
   while true:
-    # write("(i)")
     asm """
       hlt
     """
