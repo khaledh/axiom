@@ -4,7 +4,8 @@ const
   StackSize = 512
 
 type
-  ThreadStack* = ref array[StackSize, uint64]
+  ThreadStackArray* = array[StackSize, uint64]
+  ThreadStack* = ref ThreadStackArray
 
   ThreadState* = enum
     tsNew

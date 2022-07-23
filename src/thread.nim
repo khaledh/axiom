@@ -42,7 +42,7 @@ proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0): Thread =
   thNew.next = nil
 
   thNew.stack = new(ThreadStack)
-  thNew.rsp = cast[uint64](thNew.stack) + sizeof(ThreadStack).uint64 - sizeof(SwitchStack).uint64 - 128
+  thNew.rsp = cast[uint64](thNew.stack) + sizeof(ThreadStackArray).uint64 - sizeof(SwitchStack).uint64 - 128
 
   var ss = cast[ptr SwitchStack](thNew.rsp)
   zeroMem(ss, sizeof(SwitchStack))
