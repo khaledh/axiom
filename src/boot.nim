@@ -28,7 +28,7 @@ var
   madt0: ptr Madt
   ioapic0: ioapic.Ioapic
 
-proc printError(msg: string) =
+proc printError(msg: string) {.gcsafe, locks: 0.} =
   writeln(msg)
 
 proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =

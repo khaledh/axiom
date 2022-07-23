@@ -41,13 +41,13 @@ proc initConsole*(fb: Framebuffer, left, top: int, font: Font16, maxCols, maxRow
       backbuffer[i] = color
   conOut = Console(fb: fb, left: left, top: top, font: font, maxCols: maxCols, maxRows: maxRows, currCol: currCol, currRow: currRow, backColor: color)
 
-proc flush*(con: Console) {.locks: 0.} =
+proc flush*(con: Console) =
   con.fb.copyBuffer(cast [ptr UncheckedArray[uint32]](addr backbuffer), backbufferStart)
 
-proc flush*() {.locks: 0.} =
+proc flush*() =
   flush(conOut)
 
-proc scrollUp(con: var Console) {.locks: 0.} =
+proc scrollUp(con: var Console) =
   # move pointer down in the circular buffer to indicate the new start line
   backbufferStart = (backbufferStart + 16) mod 1024
 
@@ -89,7 +89,7 @@ proc newLine(con: var Console) =
 
   # flush(con)
 
-proc write*(con: var Console, str: string, color: uint32 = DefaultForeground) {.locks: 0.} =
+proc write*(con: var Console, str: string, color: uint32 = DefaultForeground) =
   for i, ch in str:
     if ch == '\n':
       # clear cursor
