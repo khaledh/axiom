@@ -4,6 +4,7 @@ import ../cpu
 import ../debug
 
 {.compile: "libc.c".}
+{.used.}
 
 proc memset*(p: pointer, value: cint, size: csize_t): pointer {.exportc.} =
   let pp = cast[ptr UncheckedArray[byte]](p)

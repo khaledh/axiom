@@ -1,6 +1,3 @@
-import std/strformat
-
-import console
 import cpu
 import idt
 import lapic

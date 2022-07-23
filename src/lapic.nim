@@ -127,14 +127,14 @@ proc writeRegister(offset: LapicOffset, value: uint32) =
   writeRegister(offset.int, value)
 
 const
-  DivideBy2   = 0b0000
-  DivideBy4   = 0b0001
-  DivideBy8   = 0b0010
-  DivideBy16  = 0b0011
-  DivideBy32  = 0b1000
-  DivideBy64  = 0b1001
-  DivideBy128 = 0b1010
-  DivideBy1   = 0b1011
+  DivideBy2   {.hint[XDeclaredButNotUsed]: off.} = 0b0000
+  DivideBy4   {.hint[XDeclaredButNotUsed]: off.} = 0b0001
+  DivideBy8   {.hint[XDeclaredButNotUsed]: off.} = 0b0010
+  DivideBy16  {.hint[XDeclaredButNotUsed]: off.} = 0b0011
+  DivideBy32  {.hint[XDeclaredButNotUsed]: off.} = 0b1000
+  DivideBy64  {.hint[XDeclaredButNotUsed]: off.} = 0b1001
+  DivideBy128 {.hint[XDeclaredButNotUsed]: off.} = 0b1010
+  DivideBy1   {.hint[XDeclaredButNotUsed]: off.} = 0b1011
 
 proc setTimer*(vector: uint8) =
   writeRegister(LapicOffset.TimerDivideConfig, DivideBy16)

@@ -1,5 +1,4 @@
 import std/base64
-import std/strformat
 
 type
   Font16* = object

@@ -1,5 +1,4 @@
 import console
-import cpu
 import idt
 import lapic
 import sched

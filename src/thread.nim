@@ -1,5 +1,3 @@
-import std/strformat
-
 import console
 import cpu
 import sched
