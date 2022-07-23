@@ -1,5 +1,5 @@
 var
-  heap*: array[0..64*1024, float64]
+  heap*: array[0..128*1024, float64]
   heapBumpPtr*: int
 
 proc malloc*(size: csize_t): pointer {.exportc.} =
