@@ -21,7 +21,6 @@ import lib/[libc, malloc]
 
 var
   sysTable: ptr EfiSystemTable
-  ioapic0: ioapic.Ioapic
 
 proc printError(msg: string) {.gcsafe, locks: 0.} =
   writeln(msg)

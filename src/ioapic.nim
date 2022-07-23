@@ -31,6 +31,9 @@ type
     registerData: ptr uint32
     gsiBase: uint32
 
+var
+  ioapic0*: Ioapic
+
 proc initIoapic*(madt: ptr Madt): Ioapic
 proc setRedirEntry*(ioapic: Ioapic, irq: uint8, vector: uint8)
 proc show*(ioapic: Ioapic)
@@ -67,6 +70,7 @@ proc initIoapic*(madt: ptr Madt): Ioapic =
   for ioapic in madt.ioapics:
     result = new(Ioapic)
     result.id = ioapic.id
+    result.address = ioapic.address
     result.registerSelect = cast[ptr uint32](ioapic.address)
     result.registerData = cast[ptr uint32](ioapic.address + 0x10)
     result.gsiBase = ioapic.gsiBase
@@ -103,9 +107,11 @@ proc show*(ioapic: Ioapic) =
 
   let ioapicId = cast[IoApicIdRegister](ioapic.readRegister(0))
   let ioapicVer = cast[IoApicVersionRegister](ioapic.readRegister(1))
-  writeln(&"  Address  = {ioapic.address:x}h")
-  writeln(&"  IOAPICID  = {ioapicId.id}")
-  writeln(&"  IOAPICVER = Version: {ioapicVer.version:0>2x}h, MaxRedirectionEntry: {ioapicVer.maxRedirEntry}")
+  writeln(&"  ID = {ioapicId.id}")
+  writeln(&"  Address = {ioapic.address:x}h")
+  writeln(&"  Version = {ioapicVer.version:0>2x}h")
+  writeln(&"  MaxRedirectionEntry = {ioapicVer.maxRedirEntry}")
+  writeln("")
   writeln("  IOREDTBL")
   writeln("       Vector  DeliveryMode  DestMode  Dest  Polarity  TriggerMode  DeliveryStatus  RemoteIRR  Mask")
   for i in 0..ioapicVer.maxRedirEntry:

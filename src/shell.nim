@@ -22,7 +22,7 @@ import cpu
 import firmware
 import gdt
 import idt
-# import ioapic
+import ioapic
 import keyboard
 import lapic
 import paging
@@ -138,8 +138,8 @@ proc dispatchCommand(cmd: string) =
     showGdt()
   of "lapic":
     lapic.show()
-#   of "ioapic":
-#     ioapic0.show()
+  of "ioapic":
+    ioapic.show(ioapic0)
   of "pci":
     showPciConfig()
   of "ahci":
