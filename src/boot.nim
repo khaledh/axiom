@@ -1,7 +1,6 @@
 import std/strformat
-import std/tables
 
-import acpi, acpi/[fadt, madt, xsdt]
+import acpi, acpi/[madt]
 import bxvbe
 import console
 import cpu
@@ -22,10 +21,6 @@ import lib/[libc, malloc]
 
 var
   sysTable: ptr EfiSystemTable
-  rsdp: ptr Rsdp
-  xsdt0: Xsdt
-  fadt0: ptr Fadt
-  madt0: ptr Madt
   ioapic0: ioapic.Ioapic
 
 proc printError(msg: string) {.gcsafe, locks: 0.} =
@@ -33,8 +28,6 @@ proc printError(msg: string) {.gcsafe, locks: 0.} =
 
 proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =
   printError(e.msg)
-
-
 
 proc spinner() {.cdecl.} =
   const spinner = ['-', '\\', '|', '/']
@@ -47,7 +40,6 @@ proc spinner() {.cdecl.} =
       sleep()
     # inc ticks
     # asm "pause"
-
 
 proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.exportc.} =
   sysTable = systemTable
@@ -107,34 +99,18 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
   loadFont()
 
-  #############################################
-  ##  ACPI Tables
-
   initEfiGuids()
-  let configTables = getUefiConfigTables(sysTable)
 
-  var acpiTable = configTables.getOrDefault(EfiAcpi2TableGuid)
-  if not isNil(acpiTable):
-    let rsdp = cast[ptr Rsdp](configTables[EfiAcpi2TableGuid])
+  ##  ACPI
+  initAcpi(sysTable)
 
-    let xsdt = initXsdt(rsdp)
-    xsdt0 = xsdt
-    # showXsdt(xsdt)
+  ##  APICs
+  initLapic()
 
-    var hdr = xsdt.entries.getOrDefault(['F', 'A', 'C', 'P'])
-    if not isNil(hdr):
-      fadt0 = parseFadt(cast[pointer](hdr))
+  ioapic0 = initIoapic(madt0)
+  # set keyboard interrupt: interrupt input 1 => vector 21h
+  ioapic0.setRedirEntry(1, 0x21)
 
-    madt0 = initMadt(xsdt)
-
-    #############################################
-    ##  APICs
-
-    initLapic()
-
-    ioapic0 = initIoapic(madt0)
-    # set keyboard interrupt: interrupt input 1 => vector 21h
-    ioapic0.setRedirEntry(1, 0x21)
 
   #############################################
   ##  Setup interrupts
@@ -151,6 +127,8 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   initIdt()
   initKeyboard(keyHandler)
   initTimer()
+
+  shell.init(sysTable)
 
   writeln("Welcome to AxiomOS")
   writeln("")

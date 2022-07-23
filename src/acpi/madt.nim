@@ -11,11 +11,11 @@
   - acpi.tables.madt
 ]#
 
+import std/options
 import std/strformat
-import std/tables
 
-import ../acpi
 import ../console
+import table
 import xsdt
 
 type
@@ -94,11 +94,18 @@ type
     flags: MpsIntInFlags
     lintN: uint8
 
+var
+  madt0*: ptr Madt
 
-proc initMadt*(xsdt: Xsdt): ptr Madt =
-  let hdr = xsdt.entries.getOrDefault(['A', 'P', 'I', 'C'])
-  if not isNil(hdr):
-    result = cast[ptr Madt](hdr)
+
+proc initMadt*() =
+  let hdr = xsdt.findBySignature(['A', 'P', 'I', 'C'])
+  if hdr.isSome:
+    madt0 = cast[ptr Madt](hdr.get())
+  else:
+    writeln("Could not initialize MADT")
+    flush()
+
 
 iterator intCtrlStructs(madt: ptr Madt): ptr InterruptControllerHeader {.inline.} =
   var intCtrlStruct = cast[ptr InterruptControllerHeader](cast[uint64](madt) + sizeof(TableDescriptionHeader).uint64 + 8)
@@ -113,17 +120,20 @@ iterator lapics*(madt: ptr Madt): ptr LocalApic =
     if intCtrlStruct.typ == ictLocalApic:
       yield cast[ptr LocalApic](intCtrlStruct)
 
+
 # I/O APICs
 iterator ioapics*(madt: ptr Madt): ptr Ioapic =
   for intCtrlStruct in intCtrlStructs(madt):
     if intCtrlStruct.typ == ictIoapic:
       yield cast[ptr Ioapic](intCtrlStruct)
 
+
 # Interrupt Source Overrides
 iterator interruptSourceOverrides*(madt: ptr Madt): ptr InterruptSourceOverride =
   for intCtrlStruct in intCtrlStructs(madt):
     if intCtrlStruct.typ == ictInterruptSourceOverride:
       yield cast[ptr InterruptSourceOverride](intCtrlStruct)
+
 
 # Local APIC NMIs
 iterator lapicNMIs*(madt: ptr Madt): ptr LocalApicNmi =
@@ -132,15 +142,15 @@ iterator lapicNMIs*(madt: ptr Madt): ptr LocalApicNmi =
       yield cast[ptr LocalApicNmi](intCtrlStruct)
 
 
-proc showMadt*(madt: ptr Madt) =
+proc showMadt*() =
   writeln("")
   writeln("MADT (Multiple APIC Description Table)")
-  writeln(&"  Local APIC Address: {madt.lapicAddress:0>8x}")
-  writeln(&"  Flags:              {madt.flags}")
+  writeln(&"  Local APIC Address: {madt0.lapicAddress:0>8x}")
+  writeln(&"  Flags:              {madt0.flags}")
   writeln("")
   writeln(&"  Interrupt Controller Structures")
 
-  for intCtrlStruct in intCtrlStructs(madt):
+  for intCtrlStruct in intCtrlStructs(madt0):
     writeln("")
     writeln(&"    {intCtrlStruct.typ}")
     case intCtrlStruct.typ

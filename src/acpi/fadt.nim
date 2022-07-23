@@ -1,7 +1,9 @@
+import std/options
 import std/strformat
 
-import ../acpi
 import ../console
+import table
+import xsdt
 
 #[
   Fixed ACPI Description Table
@@ -96,76 +98,90 @@ type
     GenericSerialBus
     Pcc  # Platform Communications Channel
 
-proc `$`(ga: GenericAddress): string =
-  &"[{ga.addrSpaceId: >12}] {ga.address: >8x}h [offset: {ga.regBitOffset: >3}, width: {ga.regBitWidth: >3}, access_size: {ga.accessSize: >3}]"
+var
+  fadt0*: ptr Fadt
+
 
 proc parseFadt*(p: pointer): ptr Fadt =
   result = cast[ptr Fadt](p)
 
-proc showFadt*(fadt: ptr Fadt) =
+
+proc initFadt*() =
+  let hdr = findBySignature(['F', 'A', 'C', 'P'])
+  if hdr.isSome:
+    fadt0 = parseFadt(cast[pointer](hdr.get()))
+  else:
+    writeln("Could not initialize FADT")
+
+
+proc `$`(ga: GenericAddress): string =
+  &"[{ga.addrSpaceId: >12}] {ga.address: >8x}h [offset: {ga.regBitOffset: >3}, width: {ga.regBitWidth: >3}, access_size: {ga.accessSize: >3}]"
+
+
+proc showFadt*() =
     writeln("")
     writeln("FADT (Fixed ACPI Description Table)")
 
-    # writeTableDescHeader(fadt.hdr)
-    writeln(&"  Revision:             {fadt.hdr.revision: >8}")
+    # writeTableDescHeader(fadt0.hdr)
+    writeln(&"  Revision:             {fadt0.hdr.revision: >8}")
 
-    writeln(&"  FIRMWARE_CTRL (FACS): {fadt.firmwareCtrl:0>8x}h")
-    writeln(&"  DSDT:                 {fadt.dsdt:0>8x}h")
-    writeln(&"  Preferred PM Profile: {fadt.preferred_pm_profile: >8}")
-    writeln(&"  SCI_INT:              {fadt.sciInt: >8}")
-    writeln(&"  SMI_CMD:              {fadt.smiCmd:>8x}h")
-    writeln(&"  ACPI_ENABLE:          {fadt.acpiEnable:>8x}h")
-    writeln(&"  ACPI_DISABLE:         {fadt.acpiDisable:>8x}h")
-    writeln(&"  S4BIOS_REQ:           {fadt.s4BiosReq:0>8x}h")
-    writeln(&"  PSTATE_CNT:           {fadt.pstateCnt:0>8x}h")
-    writeln(&"  PM1a_EVT_BLK:         {fadt.pm1aEvtBlk: >8x}h")
-    writeln(&"  PM1b_EVT_BLK:         {fadt.pm1b_evt_blk: >8x}h")
-    writeln(&"  PM1a_CNT_BLK:         {fadt.pm1a_cnt_blk: >8x}h")
-    writeln(&"  PM1b_CNT_BLK:         {fadt.pm1bCntBlk: >8x}h")
-    writeln(&"  PM2_CNT_BLK:          {fadt.pm2CntBlk: >8x}h")
-    writeln(&"  PM_TMR_BLK:           {fadt.pmTmrBlk: >8x}h")
-    writeln(&"  GPE0_BLK:             {fadt.gpe0Blk: >8x}h")
-    writeln(&"  GPE1_BLK:             {fadt.gpe1Blk: >8x}h")
-    writeln(&"  PM1_EVT_LEN:          {fadt.pm1EvtLen: >8}")
-    writeln(&"  PM1_CNT_LEN:          {fadt.pm1CntLen: >8}")
-    writeln(&"  PM2_CNT_LEN:          {fadt.pm2CntLen: >8}")
-    writeln(&"  PM_TMR_LEN:           {fadt.pmTmrLen: >8}")
-    writeln(&"  GPE0_BLK_LEN:         {fadt.gpe0BlkLen: >8}")
-    writeln(&"  GPE1_BLK_LEN:         {fadt.gpe1BlkLen: >8}")
-    writeln(&"  GPE1_BASE:            {fadt.gpe1Base: >8}")
-    writeln(&"  CST_CNT:              {fadt.cstCnt: >8x}h")
-    writeln(&"  P_LVL2_LAT:           {fadt.pLvl2Lat: >8x}h")
-    writeln(&"  P_LVL3_LAT:           {fadt.pLvl3Lat: >8x}h")
-    writeln(&"  FLUSH_SIZE:           {fadt.flushSize: >8}")
-    writeln(&"  FLUSH_STRIDE:         {fadt.flushStride: >8}")
-    writeln(&"  DUTY_OFFSET:          {fadt.dutyOffset: >8}")
-    writeln(&"  DUTY_WIDTH:           {fadt.dutyWidth: >8}")
-    writeln(&"  DAY_ALRM:             {fadt.dayAlarm: >8}")
-    writeln(&"  MON_ALRM:             {fadt.monAlarm: >8}")
-    writeln(&"  CENTURY:              {fadt.century: >8}")
-    writeln(&"  IAPC_BOOT_ARCH:       {cast[IapcBootArchFlags](fadt.iapcBootArch)}")
-    writeln(&"  Flags:        {fadt.flags: >16b}b")
-    writeln(&"  RESET_REG:            {fadt.resetReg}")
-    writeln(&"  RESET_VALUE:          {fadt.resetValue: >8x}h")
+    writeln(&"  FIRMWARE_CTRL (FACS): {fadt0.firmwareCtrl:0>8x}h")
+    writeln(&"  DSDT:                 {fadt0.dsdt:0>8x}h")
+    writeln(&"  Preferred PM Profile: {fadt0.preferred_pm_profile: >8}")
+    writeln(&"  SCI_INT:              {fadt0.sciInt: >8}")
+    writeln(&"  SMI_CMD:              {fadt0.smiCmd:>8x}h")
+    writeln(&"  ACPI_ENABLE:          {fadt0.acpiEnable:>8x}h")
+    writeln(&"  ACPI_DISABLE:         {fadt0.acpiDisable:>8x}h")
+    writeln(&"  S4BIOS_REQ:           {fadt0.s4BiosReq:0>8x}h")
+    writeln(&"  PSTATE_CNT:           {fadt0.pstateCnt:0>8x}h")
+    writeln(&"  PM1a_EVT_BLK:         {fadt0.pm1aEvtBlk: >8x}h")
+    writeln(&"  PM1b_EVT_BLK:         {fadt0.pm1b_evt_blk: >8x}h")
+    writeln(&"  PM1a_CNT_BLK:         {fadt0.pm1a_cnt_blk: >8x}h")
+    writeln(&"  PM1b_CNT_BLK:         {fadt0.pm1bCntBlk: >8x}h")
+    writeln(&"  PM2_CNT_BLK:          {fadt0.pm2CntBlk: >8x}h")
+    writeln(&"  PM_TMR_BLK:           {fadt0.pmTmrBlk: >8x}h")
+    writeln(&"  GPE0_BLK:             {fadt0.gpe0Blk: >8x}h")
+    writeln(&"  GPE1_BLK:             {fadt0.gpe1Blk: >8x}h")
+    writeln(&"  PM1_EVT_LEN:          {fadt0.pm1EvtLen: >8}")
+    writeln(&"  PM1_CNT_LEN:          {fadt0.pm1CntLen: >8}")
+    writeln(&"  PM2_CNT_LEN:          {fadt0.pm2CntLen: >8}")
+    writeln(&"  PM_TMR_LEN:           {fadt0.pmTmrLen: >8}")
+    writeln(&"  GPE0_BLK_LEN:         {fadt0.gpe0BlkLen: >8}")
+    writeln(&"  GPE1_BLK_LEN:         {fadt0.gpe1BlkLen: >8}")
+    writeln(&"  GPE1_BASE:            {fadt0.gpe1Base: >8}")
+    writeln(&"  CST_CNT:              {fadt0.cstCnt: >8x}h")
+    writeln(&"  P_LVL2_LAT:           {fadt0.pLvl2Lat: >8x}h")
+    writeln(&"  P_LVL3_LAT:           {fadt0.pLvl3Lat: >8x}h")
+    writeln(&"  FLUSH_SIZE:           {fadt0.flushSize: >8}")
+    writeln(&"  FLUSH_STRIDE:         {fadt0.flushStride: >8}")
+    writeln(&"  DUTY_OFFSET:          {fadt0.dutyOffset: >8}")
+    writeln(&"  DUTY_WIDTH:           {fadt0.dutyWidth: >8}")
+    writeln(&"  DAY_ALRM:             {fadt0.dayAlarm: >8}")
+    writeln(&"  MON_ALRM:             {fadt0.monAlarm: >8}")
+    writeln(&"  CENTURY:              {fadt0.century: >8}")
+    writeln(&"  IAPC_BOOT_ARCH:       {cast[IapcBootArchFlags](fadt0.iapcBootArch)}")
+    writeln(&"  Flags:        {fadt0.flags: >16b}b")
+    writeln(&"  RESET_REG:            {fadt0.resetReg}")
+    writeln(&"  RESET_VALUE:          {fadt0.resetValue: >8x}h")
 
-    if fadt.hdr.revision >= 3:
-      writeln(&"  X_FIRMWARE_CTRL:      {fadt.xFirmwareCtrl:0>8}h")
-      writeln(&"  X_DSDT:               {fadt.xdsdt:0>8x}h")
-      writeln(&"  X_PM1a_EVT_BLK:       {fadt.xPm1aEvtBlk}")
-      writeln(&"  X_PM1b_EVT_BLK:       {fadt.xPm1b_evt_blk}")
-      writeln(&"  X_PM1a_CNT_BLK:       {fadt.xPm1a_cnt_blk}")
-      writeln(&"  X_PM1b_CNT_BLK:       {fadt.xPm1bCntBlk}")
-      writeln(&"  X_PM2_CNT_BLK:        {fadt.xPm2CntBlk}")
-      writeln(&"  X_PM_TMR_BLK:         {fadt.xPmTmrBlk}")
-      writeln(&"  X_GPE0_BLK:           {fadt.xGpe0Blk}")
-      writeln(&"  X_GPE1_BLK:           {fadt.xGpe1Blk}")
+    if fadt0.hdr.revision >= 3:
+      writeln(&"  X_FIRMWARE_CTRL:      {fadt0.xFirmwareCtrl:0>8}h")
+      writeln(&"  X_DSDT:               {fadt0.xdsdt:0>8x}h")
+      writeln(&"  X_PM1a_EVT_BLK:       {fadt0.xPm1aEvtBlk}")
+      writeln(&"  X_PM1b_EVT_BLK:       {fadt0.xPm1b_evt_blk}")
+      writeln(&"  X_PM1a_CNT_BLK:       {fadt0.xPm1a_cnt_blk}")
+      writeln(&"  X_PM1b_CNT_BLK:       {fadt0.xPm1bCntBlk}")
+      writeln(&"  X_PM2_CNT_BLK:        {fadt0.xPm2CntBlk}")
+      writeln(&"  X_PM_TMR_BLK:         {fadt0.xPmTmrBlk}")
+      writeln(&"  X_GPE0_BLK:           {fadt0.xGpe0Blk}")
+      writeln(&"  X_GPE1_BLK:           {fadt0.xGpe1Blk}")
 
-    if fadt.hdr.revision >= 5:
-      writeln(&"  X_GPE1_BLK:           {fadt.sleepControlReg}")
-      writeln(&"  X_GPE1_BLK:           {fadt.sleepStatusReg}")
+    if fadt0.hdr.revision >= 5:
+      writeln(&"  X_GPE1_BLK:           {fadt0.sleepControlReg}")
+      writeln(&"  X_GPE1_BLK:           {fadt0.sleepStatusReg}")
 
-    if fadt.hdr.revision >= 5 and fadt.fadtMinorVersion >= 1:
-      writeln(&"  ARM_BOOT_ARCH:        {fadt.armBootArch:0>16b}b")
+    if fadt0.hdr.revision >= 5 and fadt0.fadtMinorVersion >= 1:
+      writeln(&"  ARM_BOOT_ARCH:        {fadt0.armBootArch:0>16b}b")
 
-    if fadt.hdr.revision >= 6:
-      writeln(&"  Hypervisor Vendor Identity: {fadt.hypervisorVendorIdentity: >16x}h")
+    if fadt0.hdr.revision >= 6:
+      writeln(&"  Hypervisor Vendor Identity: {fadt0.hypervisorVendorIdentity: >16x}h")

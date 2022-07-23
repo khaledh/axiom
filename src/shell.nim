@@ -15,14 +15,14 @@
 
 import std/[strformat, strutils]
 
-import acpi, acpi/[fadt, madt, xsdt]
+import acpi, acpi/[fadt, madt, rsdp, xsdt]
 import ahci
 import console
 import cpu
 import firmware
 import gdt
 import idt
-import ioapic
+# import ioapic
 import keyboard
 import lapic
 import paging
@@ -124,14 +124,14 @@ proc dispatchCommand(cmd: string) =
     showAbout()
   of "ping":
     writeln("pong")
-#   of "rsdp":
-#     showRsdp(rsdp)
-#   of "xsdt":
-#     showXsdt(xsdt0)
-#   of "fadt":
-#     showFadt(fadt0)
-#   of "madt":
-#     showMadt(madt0)
+  of "rsdp":
+    showRsdp()
+  of "xsdt":
+    showXsdt()
+  of "fadt":
+    showFadt()
+  of "madt":
+    showMadt()
   of "idt":
     showIdt()
   of "gdt":

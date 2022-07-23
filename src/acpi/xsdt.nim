@@ -1,5 +1,5 @@
 #[
-  ACPI: XSDT (eXtended System Description Table)
+  ACPI: XSDt0 (eXtended System Description Table)
 
   Responsibilities:
   - ???
@@ -11,41 +11,49 @@
   - acpi.tables.xsdt
 ]#
 
+import std/options
 import std/strformat
-import std/tables
 
-import ../acpi
 import ../console
+import table
 
 type
-  Xsdt* = object
-    hdr*: ptr TableDescriptionHeader
-    entries*: Table[array[4, char], ptr TableDescriptionHeader]
+  Xsdt* = ref object
+    hdr: ptr TableDescriptionHeader
+    numEntries: int
+
+var
+  xsdt0: Xsdt
 
 
-proc initXsdt*(rsdp: ptr Rsdp): Xsdt =
-  let p = rsdp.xsdtAddress
-  let hdr = cast[ptr TableDescriptionHeader](p)
-  result.hdr = hdr
+proc initXsdt*(xsdtAddr: pointer) =
+  xsdt0 = new(Xsdt)
+  let hdr = cast[ptr TableDescriptionHeader](xsdtAddr)
+  xsdt0.hdr = hdr
+  xsdt0.numEntries = (hdr.length.int - sizeof(TableDescriptionHeader)) div 8
 
-  let numEntries = (hdr.length.int - sizeof(TableDescriptionHeader)) div 8
-  for i in 0 ..< numEntries:
-    let tablePtrLoc = cast[ptr uint64](cast[int](p) + sizeof(TableDescriptionHeader) + i.int * 8)
+
+
+iterator entries(): ptr TableDescriptionHeader =
+  for i in 0 ..< xsdt0.numEntries:
+    let tablePtrLoc = cast[ptr uint64](cast[int](xsdt0.hdr) + sizeof(TableDescriptionHeader) + i.int * 8)
     let tableHdr = cast[ptr TableDescriptionHeader](tablePtrLoc[])
-    result.entries[tableHdr.signature] = tableHdr
+    yield tableHdr
+ 
 
-proc showXsdt*(xsdt: Xsdt) =
+proc findBySignature*(sig: array[4, char]): Option[ptr TableDescriptionHeader] =
+  for hdr in entries():
+    if hdr.signature == sig:
+      return some(hdr)
+
+
+proc showXsdt*() =
   writeln("")
   writeln("XSDT")
-  writeln(&"  Revision: {xsdt.hdr.revision}h")
-  writeln(&"  Number of Entries: {xsdt.entries.len}")
+  writeln(&"  Address: {cast[uint64](xsdt0.hdr):8>x}h")
+  writeln(&"  Revision: {xsdt0.hdr.revision}h")
+  writeln(&"  Number of Entries: {xsdt0.numEntries}")
   writeln("")
 
-  # var madt: ptr MADT
-
-  for sig, hdr in xsdt.entries:
-    # let tablePtrLoc = cast[ptr uint64](cast[int](xsdt) + sizeof(TableDescriptionHeader) + i.int * 8)
-    # let table = cast[ptr TableDescriptionHeader](tablePtrLoc[])
-    # if table.signature == "APIC":
-    #   madt = cast[ptr MADT](table)
-    writeln(&"  {sig}  addr={cast[uint64](hdr):0>8x}  length={hdr.length}")
+  for hdr in entries():
+    writeln(&"  {hdr.signature}  addr={cast[uint64](hdr):0>8x}  length={hdr.length}")
