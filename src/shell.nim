@@ -28,6 +28,7 @@ import lapic
 import paging
 import pci
 import physmem
+import smbios
 import uefi, uefi/simpletext, uefitypes
 
 var
@@ -35,20 +36,20 @@ var
   lineBuffer: string
 
 proc init*(st: ptr EfiSystemTable) =
-    sysTable = st
+  sysTable = st
 
 proc start*() {.cdecl.} =
 
-    # loop
-    writeln("] ")
+  # loop
+  writeln("] ")
 
-        # read input
+    # read input
 
-        # find handler
+    # find handler
 
-        # dispatch
+    # dispatch
 
-    discard
+  discard
 
 proc dispatchCommand(cmd: string)
 
@@ -74,6 +75,10 @@ proc showHelp() =
   writeln("  uefi memory   Show UEFI memory map")
   writeln("  uefi tables   Show UEFI config table")
   # writeln("  uefi text     Show UEFI text modes")
+
+  writeln("")
+  writeln("SMBIOS")
+  writeln("  smbios        Show SMBIOS information")
 
   writeln("")
   writeln("CPU")
@@ -143,7 +148,7 @@ proc dispatchCommand(cmd: string) =
   of "pci":
     showPciConfig()
   of "ahci":
-    showAhci(bus=0, dev=0x1f, fn=2, sysTable.bootServices)
+    showAhci(bus = 0, dev = 0x1f, fn = 2, sysTable.bootServices)
   of "font":
     showFont()
   of "cpuid":
@@ -160,6 +165,8 @@ proc dispatchCommand(cmd: string) =
     showUefiConfigTables(sysTable)
   of "uefi text":
     showSimpletext(sysTable.conOut)
+  of "smbios":
+    showSmbios(sysTable)
   of "shutdown", "bye":
     writeln("Shutting down")
     shutdown()
