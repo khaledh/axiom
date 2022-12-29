@@ -115,5 +115,5 @@ proc jumpToThread*(thread: Thread) {.cdecl.} =
     mov rsp, %0
     jmp resumeThread
     :
-    :"g"(`thread->rsp`)
+    :"g"(`thread`->rsp)
   """

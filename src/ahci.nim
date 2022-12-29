@@ -274,19 +274,19 @@ proc showAhci*(bus, dev, fn: uint8, bs: ptr EfiBootServices) =
   let abar = pciConfigRead32(bus, dev, fn, 0x24) # BAR5
   writeln(&"  ABAR = {abar:0>8x}h")
 
-  let hbaCap = cast[ptr HbaCap](abar)  # HBA Capabilities
+  let hbaCap = cast[ptr HbaCap](abar.uint64) # HBA Capabilities
   writeln(&"  CAP = {hbaCap[]}")
 
-  let globalHbaControl = cast[ptr GlobalHbaControl](abar + 0x04)  # Globla HBA Control
+  let globalHbaControl = cast[ptr GlobalHbaControl](abar.uint64 + 0x04) # Globla HBA Control
   writeln(&"  GHC = {globalHbaControl[]}")
 
-  let ips = cast[ptr uint32](abar + 0x08)  # Interrupt Pending Status
+  let ips = cast[ptr uint32](abar.uint64 + 0x08) # Interrupt Pending Status
   writeln(&"  IPS = {ips[]:0>32b}b")
 
-  let pi = cast[ptr uint32](abar + 0x0c)  # Ports Implemented
+  let pi = cast[ptr uint32](abar.uint64 + 0x0c) # Ports Implemented
   writeln(&"  PI  = {pi[]:0>32b}b")
 
-  let vs = cast[ptr uint32](abar + 0x10)  # AHCI Version
+  let vs = cast[ptr uint32](abar.uint64 + 0x10) # AHCI Version
   writeln(&"  VS  = {vs[]:0>8x}h")
 
   # Ports
@@ -294,7 +294,7 @@ proc showAhci*(bus, dev, fn: uint8, bs: ptr EfiBootServices) =
   let startingPortOffset = 0x100'u32
   for i in [0, 2]:
     var portOffset = startingPortOffset + (i.uint32 * 0x80)
-    let portRegs = cast[ptr PortRegisters](abar + portOffset)
+    let portRegs = cast[ptr PortRegisters](abar.uint64 + portOffset)
 
     # portRegs.sctl.det = 1
     # var x = 0

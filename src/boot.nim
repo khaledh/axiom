@@ -22,7 +22,7 @@ import lib/[libc, malloc]
 var
   sysTable: ptr EfiSystemTable
 
-proc printError(msg: string) {.gcsafe, locks: 0.} =
+proc printError(msg: string) {.gcsafe.} =
   writeln(msg)
 
 proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =

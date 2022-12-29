@@ -1,6 +1,5 @@
 import std/tables
 import std/strformat
-import std/strutils
 
 import console
 import uefi, uefitypes
@@ -181,7 +180,7 @@ proc parseStringBytes(stringBytes: ptr UncheckedArray[char], strings: var seq[cs
     `end` = start
     while stringBytes[`end`] != '\0':
       inc(`end`)
-    strings &= cstring(addr stringBytes[start])
+    strings &= cast[cstring](addr stringBytes[start])
     start = `end` + 1
 
   return start + 1

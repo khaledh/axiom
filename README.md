@@ -4,7 +4,7 @@ This is my attempt at creating a modern 64-bit kernel in Nim.
 
 ### Requirements
 
-- Nim 1.6.2
+- Nim 1.9.1
 - MinGW-w64
 - QEMU
 - UEFI BIOS image:

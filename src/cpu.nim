@@ -115,8 +115,8 @@ proc readMSR*(ecx: uint32): uint64 =
 proc cpuid*(eax, ebx, ecx, edx: ptr uint32) =
   asm """
     cpuid
-    :"=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
-    :"a"(*eax)
+    :"=a"(*`eax`), "=b"(*`ebx`), "=c"(*`ecx`), "=d"(*`edx`)
+    :"a"(*`eax`)
   """
 
 

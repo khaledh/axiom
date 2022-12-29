@@ -115,13 +115,13 @@ proc initLapic*() =
   baseAddress = (baseMsr.baseAddress shl 12).uint32
 
 proc readRegister(offset: int): uint32 =
-  result = cast[ptr uint32](baseAddress + offset.uint16)[]
+  result = cast[ptr uint32](baseAddress.uint64 + offset.uint16)[]
 
 proc readRegister(offset: LapicOffset): uint32 =
   readRegister(offset.int)
 
 proc writeRegister(offset: int, value: uint32) =
-  cast[ptr uint32](baseAddress + offset.uint16)[] = value
+  cast[ptr uint32](baseAddress.uint64 + offset.uint16)[] = value
 
 proc writeRegister(offset: LapicOffset, value: uint32) =
   writeRegister(offset.int, value)

@@ -44,7 +44,7 @@ type
     mode*: ptr SimpleTextOutputMode
 
   TextReset = proc (this: ptr SimpleTextOutputInterface, extendedVerification: bool): EfiStatus {.cdecl.}
-  TextOutputString = proc (this: ptr SimpleTextOutputInterface, str: ptr Utf16Char): EfiStatus {.cdecl, gcsafe, locks: 0, tags: [], raises: [].}
+  TextOutputString = proc (this: ptr SimpleTextOutputInterface, str: ptr Utf16Char): EfiStatus {.cdecl, gcsafe, tags: [], raises: [].}
   TextTestString = proc (this: ptr SimpleTextOutputInterface, str: openArray[Utf16Char]): EfiStatus {.cdecl.}
   TextQueryMode = proc (this: ptr SimpleTextOutputInterface, modeNum: uint, cols, rows: ptr uint): EfiStatus {.cdecl.}
   TextSetMode = proc (this: ptr SimpleTextOutputInterface, modeNum: uint): EfiStatus {.cdecl.}

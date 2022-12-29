@@ -71,8 +71,8 @@ proc initIoapic*(madt: ptr Madt): Ioapic =
     result = new(Ioapic)
     result.id = ioapic.id
     result.address = ioapic.address
-    result.registerSelect = cast[ptr uint32](ioapic.address)
-    result.registerData = cast[ptr uint32](ioapic.address + 0x10)
+    result.registerSelect = cast[ptr uint32](ioapic.address.uint64)
+    result.registerData = cast[ptr uint32](ioapic.address.uint64 + 0x10)
     result.gsiBase = ioapic.gsiBase
     break
 
