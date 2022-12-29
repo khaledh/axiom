@@ -15,7 +15,7 @@
 
 import std/[strformat, strutils]
 
-import acpi, acpi/[fadt, madt, rsdp, xsdt]
+import acpi/[fadt, madt, rsdp, xsdt]
 import ahci
 import console
 import cpu

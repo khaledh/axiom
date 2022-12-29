@@ -76,7 +76,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   let virtHeight = bgaReadRegister(BxvbePortIndexVirtHeight)
   println(&"BGA VirtualRes = {virtWidth}x{virtHeight}")
 
-  var fb = initFramebuffer(BxvbeLfbPhysicalAddress, width=1280, height=1024)
+  var fb = initFramebuffer(BxvbeLfbPhysicalAddress, width = 1280, height = 1024)
 
   # clear background
   fb.clear(0x2d363d'u32)
@@ -86,7 +86,8 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   # let consoleBkColor = 0x2d363d'u32
   # let consoleBkColor = 0x1d262d'u32
   let consoleBkColor = 0x0d161d'u32
-  initConsole(fb, left=8, top=16, font=fnt, maxCols=158, maxRows=61, color=consoleBkColor)
+  initConsole(fb, left = 8, top = 16, font = fnt, maxCols = 158, maxRows = 61,
+      color = consoleBkColor)
 
   writeln("""    _          _                    ___  ____  """, 0xa0caef)
   writeln("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """, 0xa0caef)
@@ -122,6 +123,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   # # mask all interrupts
   portOut8(Pic1DataPort, 0xff)
   portOut8(Pic2DataPort, 0xff)
+
 
   initIdt()
   initKeyboard(keyHandler)

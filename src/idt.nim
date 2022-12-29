@@ -56,7 +56,11 @@ proc showIdt*() =
     #   desc.offset16 = uint16(timerIntHandlerAddr shr 16 and 0xffff'u64)
     #   desc.offset32 = uint32(timerIntHandlerAddr shr 32)
 
-    if i in [0, 0x21, 255]:
+    if i in 0..255:
+      if i > 33 and i != 255:
+        continue
+      if i > 33:
+        writeln("  ...")
       write(&"  [{i:>3}] ")
       # write(&"{cast[ptr uint64](cast[uint64](desc) + 8)[]}h")
       # writeln(&"{cast[uint64](desc[])} ")
@@ -73,6 +77,3 @@ proc showIdt*() =
 
       write(&"  Selector={desc.selector:0>2x}")
       writeln(&"  Offset={(desc.offset32.uint64 shl 32) or (desc.offset16.uint64 shl 16) or (desc.offset00):x}h")
-
-      if i < 255:
-        writeln("  ...")

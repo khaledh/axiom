@@ -8,21 +8,21 @@ type
     pitch: uint32
 
 proc initFramebuffer*(address: uint64, width, height: uint32, pitch: uint32 = 0): Framebuffer =
-    var fb = Framebuffer(
-        buffer0: cast[ptr UncheckedArray[uint32]](address),
-        buffer1: cast[ptr UncheckedArray[uint32]](address + width*height*4),
-        width: width,
-        height: height,
-        pitch: if pitch == 0: width else: pitch
-    )
-    fb.currentBuffer = fb.buffer0
-    result = fb
+  var fb = Framebuffer(
+    buffer0: cast[ptr UncheckedArray[uint32]](address),
+    buffer1: cast[ptr UncheckedArray[uint32]](address + width*height*4),
+    width: width,
+    height: height,
+    pitch: if pitch == 0: width else: pitch
+  )
+  fb.currentBuffer = fb.buffer0
+  result = fb
 
 proc swapBuffers*(fb: var Framebuffer) =
-    if fb.currentBuffer == fb.buffer0:
-      fb.currentBuffer = fb.buffer1
-    else:
-      fb.currentBuffer = fb.buffer0
+  if fb.currentBuffer == fb.buffer0:
+    fb.currentBuffer = fb.buffer1
+  else:
+    fb.currentBuffer = fb.buffer0
 
 proc clear*(fb: Framebuffer, color: uint32 = 0) =
   for i in 0 ..< fb.height:

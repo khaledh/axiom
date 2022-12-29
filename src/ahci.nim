@@ -323,18 +323,18 @@ proc showAhci*(bus, dev, fn: uint8, bs: ptr EfiBootServices) =
     writeln(&"    DEVSLP = {portRegs.devslp}")
 
 
-    if portRegs.ssts.det == 3:  # port has a device attached
+    if portRegs.ssts.det == 3: # port has a device attached
       # identify device
 
       var ident: array[256, uint16]
 
-      var cmdCode: uint8 =  0xEC  # IDENTIFY DEVICE
+      var cmdCode: uint8 = 0xEC # IDENTIFY DEVICE
       if portRegs.sig.sig == 0xeb140101'u32:
-        cmdCode = 0xA1            # IDENTIFY PACKET DEVICE
+        cmdCode = 0xA1 # IDENTIFY PACKET DEVICE
 
       var fis = FisRegisterH2D(
-        fisType: 0x27,  # RegisterH2D
-        c: 1,           # Command
+        fisType: 0x27, # RegisterH2D
+        c: 1,          # Command
         command: cmdCode,
       )
 
@@ -409,4 +409,3 @@ proc showAhci*(bus, dev, fn: uint8, bs: ptr EfiBootServices) =
       writeln(&"  SATA NCQ Pri:          {idData.sataNcqPriority}")
       writeln(&"  SATA Host Auto P2S:    {idData.sataHostAutoP2S}")
       writeln(&"  SATA Dev Auto P2S:     {idData.sataDeviceAutoP2S}")
-      
