@@ -4,7 +4,7 @@ import lapic
 import sched
 import threaddef
 
-var ticks: uint64
+var ticks: uint64 = 0
 
 proc timerInterruptHandler*(intFrame: pointer)
     {.cdecl, codegenDecl: "__attribute__ ((interrupt)) $# $#$#".} =
@@ -30,6 +30,5 @@ proc timerInterruptHandler*(intFrame: pointer)
     schedule(tsReady)
 
 proc init*() =
-  ticks = 0
   setInterruptHandler(0x20, timerInterruptHandler)
   lapic.setTimer(0x20)

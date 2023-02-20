@@ -19,14 +19,15 @@ import timer
 import uefi, uefitypes
 import lib/[libc, malloc]
 
-var
-  sysTable: ptr EfiSystemTable
 
 proc printError(msg: string) {.gcsafe.} =
   writeln(msg)
 
 proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =
   printError(e.msg)
+
+errorMessageWriter = printError
+unhandledExceptionHook = handleUnhandledException
 
 proc spinner() {.cdecl.} =
   const spinner = ['-', '\\', '|', '/']
@@ -40,14 +41,14 @@ proc spinner() {.cdecl.} =
     # inc ticks
     # asm "pause"
 
+proc NimMain() {.cdecl, importc.}
+
 proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.exportc.} =
-  sysTable = systemTable
-  heapBumpPtr = cast[int](addr heap)
+  NimMain()
+
+  var sysTable = systemTable
 
   initDebug(sysTable.conOut)
-
-  errorMessageWriter = printError
-  unhandledExceptionHook = handleUnhandledException
 
   discard sysTable.conOut.setMode(sysTable.conOut, 2)
 
@@ -99,8 +100,6 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
   loadFont()
 
-  uefi.init()
-
   ##  ACPI
   acpi.init(sysTable)
 
@@ -136,7 +135,6 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   writeln("")
   write("] ")
 
-  thread.init()
   sched.init()
 
   # let t1 = createThread(shell.start)
