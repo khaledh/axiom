@@ -4,7 +4,7 @@ import console
 import threaddef
 
 proc schedule*(newState: ThreadState) =
-  # writeln("(s)")
+  # writeln(&"(s:{thCurr.id})")
   # showThreads()
   # writeln(&"thCurr.id: {thCurr.id:x}h, thCurr @ {cast[uint64](thCurr):x}")
 
@@ -16,24 +16,24 @@ proc schedule*(newState: ThreadState) =
   else: discard
 
   # get highest priority thread
-  var thNext = readyQueue.pop()
-  thNext.state = tsRunning
+  if readyQueue.len > 0:
+    var thNext = readyQueue.pop()
+    thNext.state = tsRunning
 
-  # writeln(&"=> thNext.id: {thNext.id}, thNext.state: {thNext.state}")
+    # writeln(&"=> thNext.id: {thNext.id}, thNext.state: {thNext.state}")
 
-  # if thCurr.state == tsTerminated:
-  #   halt()
-  # if thNext == thCurr:
-  #   # same thread, no context switch
-  #   return
+    # if thCurr.state == tsTerminated:
+    #   halt()
+    # if thNext == thCurr:
+    #   # same thread, no context switch
+    #   return
 
-
-  if newState == tsTerminated:
-    jumpToThread(thNext)
-  else:
-    var thTemp = thCurr
-    thCurr = thNext
-    contextSwitch(thTemp, thNext)
+    if newState == tsTerminated:
+      jumpToThread(thNext)
+    elif thNext.id != thCurr.id and thNext.priority >= thCurr.priority:
+      var thTemp = thCurr
+      thCurr = thNext
+      contextSwitch(thTemp, thNext)
 
 
 proc start*(thread: Thread) =
@@ -62,13 +62,15 @@ proc showThreads*() =
   writeln("Running:")
   showThread(thCurr)
 
-  writeln("Ready Queue:")
-  for i in 0 ..< readyQueue.len:
-    showThread(readyQueue[i])
+  if readyQueue.len > 0:
+    writeln("Ready:")
+    for i in 0 ..< readyQueue.len:
+      showThread(readyQueue[i])
 
-  writeln("Blocked Queue:")
-  for i in 0 ..< blockedQueue.len:
-    showThread(blockedQueue[i])
+  if blockedQueue.len > 0:
+    writeln("Blocked:")
+    for i in 0 ..< blockedQueue.len:
+      showThread(blockedQueue[i])
 
 proc init*() =
   thCurr = nil
