@@ -1,6 +1,6 @@
 var
   heap*: array[0..128*1024, float64]
-  heapBumpPtr*: int
+  heapBumpPtr*: int = cast[int](addr heap)
 
 proc malloc*(size: csize_t): pointer {.exportc.} =
   result = cast[pointer](heapBumpPtr)

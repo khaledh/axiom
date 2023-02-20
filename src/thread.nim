@@ -5,7 +5,7 @@ import threaddef
 
 
 var
-  nextAvailableId: uint64
+  nextAvailableId: uint64 = 0
 
 proc kernelThread(function: ThreadFunc) =
   # writeln("starting thread")
@@ -52,6 +52,3 @@ proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0): Thread =
 
 proc sleep*() =
   schedule(tsBlocked)
-
-proc init*() =
-  nextAvailableId = 0
