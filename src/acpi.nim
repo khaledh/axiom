@@ -4,7 +4,7 @@ import acpi/[fadt, madt, rsdp, xsdt]
 import uefi, uefitypes
 
 
-proc initAcpi*(sysTable: ptr EfiSystemTable) =
+proc init*(sysTable: ptr EfiSystemTable) =
   let configTables = getUefiConfigTables(sysTable)
   var acpiConfigTable = configTables.getOrDefault(EfiAcpi2TableGuid)
 

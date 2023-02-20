@@ -53,5 +53,5 @@ proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0): Thread =
 proc sleep*() =
   schedule(tsBlocked)
 
-proc initThreads*() =
+proc init*() =
   nextAvailableId = 0

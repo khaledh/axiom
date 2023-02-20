@@ -29,7 +29,7 @@ proc timerInterruptHandler*(intFrame: pointer)
   if ticks mod 10 == 0:
     schedule(tsReady)
 
-proc initTimer*() =
+proc init*() =
   ticks = 0
   setInterruptHandler(0x20, timerInterruptHandler)
   lapic.setTimer(0x20)

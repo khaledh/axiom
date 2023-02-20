@@ -7,7 +7,7 @@ type
     height: uint32
     pitch: uint32
 
-proc initFramebuffer*(address: uint64, width, height: uint32, pitch: uint32 = 0): Framebuffer =
+proc init*(address: uint64, width, height: uint32, pitch: uint32 = 0): Framebuffer =
   var fb = Framebuffer(
     buffer0: cast[ptr UncheckedArray[uint32]](address),
     buffer1: cast[ptr UncheckedArray[uint32]](address + width*height*4),

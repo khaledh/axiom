@@ -76,7 +76,7 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   let virtHeight = bgaReadRegister(BxvbePortIndexVirtHeight)
   println(&"BGA VirtualRes = {virtWidth}x{virtHeight}")
 
-  var fb = initFramebuffer(BxvbeLfbPhysicalAddress, width = 1280, height = 1024)
+  var fb = framebuffer.init(BxvbeLfbPhysicalAddress, width = 1280, height = 1024)
 
   # clear background
   fb.clear(0x2d363d'u32)
@@ -86,8 +86,8 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   # let consoleBkColor = 0x2d363d'u32
   # let consoleBkColor = 0x1d262d'u32
   let consoleBkColor = 0x0d161d'u32
-  initConsole(fb, left = 8, top = 16, font = fnt, maxCols = 158, maxRows = 61,
-      color = consoleBkColor)
+  console.init(fb, left = 8, top = 16, font = fnt, maxCols = 158, maxRows = 61,
+    color = consoleBkColor)
 
   writeln("""    _          _                    ___  ____  """, 0xa0caef)
   writeln("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """, 0xa0caef)
@@ -99,15 +99,16 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
   loadFont()
 
-  initEfiGuids()
+  uefi.init()
 
   ##  ACPI
-  initAcpi(sysTable)
+  acpi.init(sysTable)
 
-  ##  APICs
-  initLapic()
+  ##  Local APICs
+  lapic.init()
 
-  ioapic0 = initIoapic(madt0)
+  ## I/O APIC
+  ioapic0 = ioapic.init(madt0)
   # set keyboard interrupt: interrupt input 1 => vector 21h
   ioapic0.setRedirEntry(1, 0x21)
 
@@ -125,9 +126,9 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   portOut8(Pic2DataPort, 0xff)
 
 
-  initIdt()
-  initKeyboard(keyHandler)
-  initTimer()
+  idt.init()
+  keyboard.init(keyHandler)
+  timer.init()
 
   shell.init(sysTable)
 
@@ -135,8 +136,8 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   writeln("")
   write("] ")
 
-  initThreads()
-  initScheduler()
+  thread.init()
+  sched.init()
 
   # let t1 = createThread(shell.start)
 

@@ -35,7 +35,7 @@ var
   backbufferStart: int
 
 
-proc initConsole*(fb: Framebuffer, left, top: int, font: Font16, maxCols, maxRows: int, currCol, currRow: int = 0, color: uint32 = 0) =
+proc init*(fb: Framebuffer, left, top: int, font: Font16, maxCols, maxRows: int, currCol, currRow: int = 0, color: uint32 = 0) =
   backbufferStart = 0
   for i in 0 ..< 1024*1280:
       backbuffer[i] = color

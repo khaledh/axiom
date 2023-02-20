@@ -34,7 +34,7 @@ type
 var
   ioapic0*: Ioapic
 
-proc initIoapic*(madt: ptr Madt): Ioapic
+proc init*(madt: ptr Madt): Ioapic
 proc setRedirEntry*(ioapic: Ioapic, irq: uint8, vector: uint8)
 proc show*(ioapic: Ioapic)
 
@@ -66,7 +66,7 @@ type
     reserved        {.bitsize: 39.}: uint64
     destination     {.bitsize:  8.}: uint64
 
-proc initIoapic*(madt: ptr Madt): Ioapic =
+proc init*(madt: ptr Madt): Ioapic =
   for ioapic in madt.ioapics:
     result = new(Ioapic)
     result.id = ioapic.id
