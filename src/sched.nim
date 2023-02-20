@@ -70,5 +70,5 @@ proc showThreads*() =
   for i in 0 ..< blockedQueue.len:
     showThread(blockedQueue[i])
 
-proc initScheduler*() =
+proc init*() =
   thCurr = nil

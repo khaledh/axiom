@@ -23,7 +23,7 @@ type
 var
   idtDesc: IdtDescriptor
 
-proc initIdt*() =
+proc init*() =
   asm """
     sidt %0
     :"=m"(`idtDesc`)

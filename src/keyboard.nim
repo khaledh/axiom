@@ -95,7 +95,7 @@ proc kbdInterruptHandler*(intFrame: pointer)
   lapic.eoi()
 {.pop.}
 
-proc initKeyboard*(handler: KeyEventHandler) =
+proc init*(handler: KeyEventHandler) =
   handleKeyEvent = handler
   # writeln("  Setting keyboard interrupt handler (0x21)")
   setInterruptHandler(0x21, kbdInterruptHandler)

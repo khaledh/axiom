@@ -19,7 +19,7 @@ const
 
 var efiGuids: Table[Guid, tuple[id: string, name: string]]
 
-proc initEfiGuids*() =
+proc initEfiGuids() =
   efiGuids = {
     EfiLzmaCustomDecompressGuid   : ("LZMA_CUSTOM_DECOMPRESS_GUID", "LZMA Custom Decompress"),
     EfiDxeServicesTableGuid       : ("DXE_SERVICES_TABLE_GUID", "DXE Services Table"),
@@ -32,6 +32,9 @@ proc initEfiGuids*() =
     EfiAcpi2TableGuid             : ("EFI_ACPI_TABLE_GUID", "ACPI 2.0+ Table"),
     EfiMemoryAttributesTableGuid  : ("EFI_MEMORY_ATTRIBUTES_TABLE_GUID", "Memory Attributes Table"),
   }.toTable
+
+proc init*() =
+  initEfiGuids()
 
 proc getUefiConfigTables*(st: ptr EfiSystemTable): Table[Guid, pointer] =
   for i in 0 ..< st.numTableEntries:

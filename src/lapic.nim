@@ -110,7 +110,7 @@ type
 var
   baseAddress: uint32
 
-proc initLapic*() =
+proc init*() =
   let baseMsr = cast[Ia32ApicBaseMsr](readMSR(0x1b))
   baseAddress = (baseMsr.baseAddress shl 12).uint32
 
