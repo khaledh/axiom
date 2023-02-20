@@ -28,7 +28,9 @@ import lapic
 import paging
 import pci
 import physmem
+import sched
 import smbios
+import thread
 import uefi, uefi/simpletext, uefitypes
 
 var
@@ -38,18 +40,18 @@ var
 proc init*(st: ptr EfiSystemTable) =
   sysTable = st
 
-proc start*() {.cdecl.} =
+# proc start*() {.cdecl.} =
 
-  # loop
-  writeln("] ")
+#   # loop
+#   writeln("] ")
 
-    # read input
+#     # read input
 
-    # find handler
+#     # find handler
 
-    # dispatch
+#     # dispatch
 
-  discard
+#   discard
 
 proc dispatchCommand(cmd: string)
 
@@ -68,7 +70,7 @@ proc keyHandler*(evt: KeyEvent) =
       lineBuffer &= evt.ch
       write(&"{evt.ch}")
 
-proc showHelp() =
+proc showHelp() {.cdecl.} =
   writeln("")
   writeln("UEFI")
   writeln("  uefi fw       Show UEFI firmware version")
@@ -124,7 +126,7 @@ proc showAbout() =
 proc dispatchCommand(cmd: string) =
   case cmd:
   of "help":
-    showHelp()
+    createThread(showHelp).startThread()
   of "about":
     showAbout()
   of "ping":
