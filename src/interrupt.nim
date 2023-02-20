@@ -13,7 +13,7 @@ type
     rdi, rsi, rbp, rbx, rdx, rcx, rax: uint64
     vector: uint64
     errorCode: uint64
-    rip, cs, eflags, esp, ss: uint64
+    rip, cs, rflags, rsp, ss: uint64
 
 proc handleInterrupt*(intFrame: InterruptFrame) {.cdecl, exportc.} =
   write(&" int[{intFrame.vector}] ")

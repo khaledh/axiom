@@ -1,6 +1,6 @@
 import std/strformat
 
-import acpi, acpi/[madt]
+import acpi, acpi/madt
 import bxvbe
 import console
 import cpu
@@ -11,6 +11,7 @@ import idt
 import ioapic
 import keyboard
 import lapic
+import pic
 import shell
 import sched
 import thread
@@ -21,6 +22,7 @@ import lib/[libc, malloc]
 
 
 proc printError(msg: string) {.gcsafe.} =
+  writeln("Unhandled Exception")
   writeln(msg)
 
 proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =
@@ -79,15 +81,17 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
   var fb = framebuffer.init(BxvbeLfbPhysicalAddress, width = 1280, height = 1024)
 
-  # clear background
-  fb.clear(0x2d363d'u32)
-
-
   var fnt = loadFont16()
+
   # let consoleBkColor = 0x2d363d'u32
   # let consoleBkColor = 0x1d262d'u32
-  let consoleBkColor = 0x0d161d'u32
-  console.init(fb, left = 8, top = 16, font = fnt, maxCols = 158, maxRows = 61,
+  # let consoleBkColor = 0x0d161d'u32
+  let consoleBkColor = 0x26486B'u32
+
+  # clear background
+  fb.clear(consoleBkColor)
+
+  console.init(fb, left = 8, top = 16, font = fnt, maxCols = 158, maxRows = 62,
     color = consoleBkColor)
 
   writeln("""    _          _                    ___  ____  """, 0xa0caef)
@@ -103,6 +107,9 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   ##  ACPI
   acpi.init(sysTable)
 
+  #############################################
+  ##  Setup interrupts
+
   ##  Local APICs
   lapic.init()
 
@@ -111,21 +118,9 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   # set keyboard interrupt: interrupt input 1 => vector 21h
   ioapic0.setRedirEntry(1, 0x21)
 
-
-  #############################################
-  ##  Setup interrupts
-
-  # let's disable the PIC
-  const
-    Pic1DataPort = 0x21
-    Pic2DataPort = 0xA1
-
-  # # mask all interrupts
-  portOut8(Pic1DataPort, 0xff)
-  portOut8(Pic2DataPort, 0xff)
-
-
+  pic.disable()
   idt.init()
+
   keyboard.init(keyHandler)
   timer.init()
 
@@ -139,11 +134,10 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
 
   # let t1 = createThread(shell.start)
 
-  createThread(spinner).start()
+  # createThread(spinner).start()
 
   # idle thread
   var t0 = createThread(idle, ThreadPriority.low)
-  t0.state = tsRunning
   jumpToThread(t0)
 
 
