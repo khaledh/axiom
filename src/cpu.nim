@@ -27,7 +27,7 @@ proc portOut32*(port: uint16, data: uint32) =
     :"Nd"(`port`), "a"(`data`)
   """
 
-proc portIn8*(port: uint16): uint8  =
+proc portIn8*(port: uint16): uint8 =
   asm """
     in %0, %1
     :"=a"(`result`)
@@ -181,7 +181,7 @@ proc showControlRegisters*() =
 
   ##  CPU: IA32_EFER register
 
-  var efer = readMSR(0xC0000080'u32)  # EFER
+  var efer = readMSR(0xC0000080'u32) # EFER
   writeln("")
   writeln(&"IA32_EFER = {efer:.>16x}h")
   writeln(&"  .SCE         SYSCALL Enable                      {efer shr  0 and 1}")

@@ -14,21 +14,17 @@ proc timerInterruptHandler*(intFrame: pointer)
 
   if ticks mod 10 == 0:
     # write(&"{(ticks div 10) mod 10}")
-    flush()
+    console.flush()
+  # if ticks mod 1000 == 0:
+  #   showThreads()
 
   inc(ticks)
 
   lapic.eoi()
 
-  # if ticks == 20:
-  #   createThread(thread3).start()
-
-  # if ticks == 22:
-  #   createThread(thread4).start()
-
   if ticks mod 10 == 0:
     schedule(tsReady)
 
 proc init*() =
-  setInterruptHandler(0x20, timerInterruptHandler)
+  idt.setInterruptHandler(0x20, timerInterruptHandler)
   lapic.setTimer(0x20)

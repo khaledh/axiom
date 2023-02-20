@@ -40,8 +40,8 @@ proc showUefiConfigTables*(st: ptr EfiSystemTable) =
 
   writeln("")
   writeln("UEFI Configuration Table")
-  for guid, p in configTables.pairs:
+  for guid in configTables.keys:
     write(&"  {$guid}")
-    if efiGuids.contains(guid):
+    if guid in efiGuids:
       write(&"  {efiGuids[guid][1]}")
     writeln("")
