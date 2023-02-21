@@ -14,7 +14,7 @@ This is my attempt at creating a modern 64-bit kernel in Nim.
 ## Compile and run
 
 ```console
-$ nim c --os:any --out:fatimg/EFI/BOOT/BOOTX64.EFI src/boot.nim
+$ nim c --os:any --out:fatimg/EFI/BOOT/BOOTX64.EFI src/boot/boot.nim
 $ qemu-system-x86_64 \
     -bios /usr/share/edk2-ovmf/x64/OVMF_CODE.fd \
     -drive format=raw,file.driver=vvfat,file.rw=on,file.dir=fatimg \
