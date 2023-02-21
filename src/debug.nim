@@ -1,8 +1,8 @@
-import uefitypes
+import boot/uefitypes
 
 var conOut: ptr SimpleTextOutputInterface
 
-proc initDebug*(outputInterface: ptr SimpleTextOutputInterface) =
+proc init*(outputInterface: ptr SimpleTextOutputInterface) =
   conOut = outputInterface
 
 proc printws*(wstr: WideCString) =

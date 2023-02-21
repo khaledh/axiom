@@ -1,6 +1,6 @@
 import std/strformat
 
-import ../cpu
+import ../kernel/cpu
 import ../debug
 
 {.compile: "libc.c".}

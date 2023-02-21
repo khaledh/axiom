@@ -15,21 +15,20 @@
 
 import std/[strformat, strutils]
 
-import acpi/[fadt, madt, rsdp, xsdt]
-import ahci
-import console
-import cpu
-import firmware
-import gdt
-import idt
-import ioapic
-import keyboard
-import lapic
-import paging
-import pci
-import physmem
-import smbios
-import uefi, uefi/simpletext, uefitypes
+import boot/[uefi, uefi/simpletext, uefi/firmware, uefitypes]
+import kernel/acpi/[fadt, madt, rsdp, xsdt]
+import kernel/cpu
+import kernel/devices/ahci
+import kernel/devices/console
+import kernel/devices/keyboard
+import kernel/devices/pci
+import kernel/devices/smbios
+import kernel/gdt
+import kernel/idt
+import kernel/ioapic
+import kernel/lapic
+import kernel/paging
+import kernel/physmem
 
 var
   sysTable: ptr EfiSystemTable
