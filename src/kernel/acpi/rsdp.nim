@@ -17,7 +17,7 @@ type
 var
   rsdp0*: ptr Rsdp
 
-proc initRsdp*(acpiConfigTable: pointer) =
+proc init*(acpiConfigTable: pointer) =
   rsdp0 = cast[ptr Rsdp](acpiConfigTable)
 
 proc showRsdp*() =

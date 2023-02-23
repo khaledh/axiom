@@ -97,7 +97,7 @@ var
   madt0*: ptr Madt
 
 
-proc initMadt*() =
+proc init*() =
   let hdr = xsdt.findBySignature(['A', 'P', 'I', 'C'])
   if hdr.isSome:
     madt0 = cast[ptr Madt](hdr.get())

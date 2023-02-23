@@ -105,7 +105,7 @@ proc parseFadt*(p: pointer): ptr Fadt =
   result = cast[ptr Fadt](p)
 
 
-proc initFadt*() =
+proc init*() =
   let hdr = findBySignature(['F', 'A', 'C', 'P'])
   if hdr.isSome:
     fadt0 = parseFadt(cast[pointer](hdr.get()))

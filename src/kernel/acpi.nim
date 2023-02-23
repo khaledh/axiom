@@ -11,7 +11,7 @@ proc init*(sysTable: ptr EfiSystemTable) =
   if isNil(acpiConfigTable):
     quit("Cannot find ACPI table")
 
-  initRsdp(acpiConfigTable)
-  initXsdt(rsdp0.xsdtAddress)
-  initFadt()
-  initMadt()
+  rsdp.init(acpiConfigTable)
+  xsdt.init(rsdp0.xsdtAddress)
+  fadt.init()
+  madt.init()

@@ -26,7 +26,7 @@ var
   xsdt0: Xsdt
 
 
-proc initXsdt*(xsdtAddr: pointer) =
+proc init*(xsdtAddr: pointer) =
   xsdt0 = new(Xsdt)
   let hdr = cast[ptr TableDescriptionHeader](xsdtAddr)
   xsdt0.hdr = hdr
