@@ -45,26 +45,26 @@ proc show*(ioapic: Ioapic)
 type
   IoapicIdRegister {.packed.} = object
     reserved1 {.bitsize: 24.}: uint32
-    id {.bitsize: 4.}: uint32
-    reserved2 {.bitsize: 24.}: uint32
+    id        {.bitsize:  4.}: uint32
+    reserved2 {.bitsize:  4.}: uint32
 
   IoapicVersionRegister {.packed.} = object
-    version {.bitsize: 8.}: uint32
-    reserved1 {.bitsize: 8.}: uint32
+    version       {.bitsize: 8.}: uint32
+    reserved1     {.bitsize: 8.}: uint32
     maxRedirEntry {.bitsize: 8.}: uint32
-    reserved2 {.bitsize: 8.}: uint32
+    reserved2     {.bitsize: 8.}: uint32
 
   IoapicRedirectionEntry {.packed.} = object
-    vector {.bitsize: 8.}: uint64
-    deliveryMode {.bitsize: 3.}: uint64
-    destinationMode {.bitsize: 1.}: uint64
-    deliveryStatus {.bitsize: 1.}: uint64
-    polarity {.bitsize: 1.}: uint64
-    remoteIrr {.bitsize: 1.}: uint64
-    triggerMode {.bitsize: 1.}: uint64
-    mask {.bitsize: 1.}: uint64
-    reserved {.bitsize: 39.}: uint64
-    destination {.bitsize: 8.}: uint64
+    vector          {.bitsize:  8.}: uint64
+    deliveryMode    {.bitsize:  3.}: uint64
+    destinationMode {.bitsize:  1.}: uint64
+    deliveryStatus  {.bitsize:  1.}: uint64
+    polarity        {.bitsize:  1.}: uint64
+    remoteIrr       {.bitsize:  1.}: uint64
+    triggerMode     {.bitsize:  1.}: uint64
+    mask            {.bitsize:  1.}: uint64
+    reserved        {.bitsize: 39.}: uint64
+    destination     {.bitsize:  8.}: uint64
 
 proc init*(madt: ptr Madt): Ioapic =
   for ioapic in madt.ioapics:
