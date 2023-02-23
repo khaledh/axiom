@@ -15,18 +15,6 @@ proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =
 errorMessageWriter = printError
 unhandledExceptionHook = handleUnhandledException
 
-proc spinner() {.cdecl.} =
-  const spinner = ['-', '\\', '|', '/']
-  var index = 0
-
-  while true:
-    # if ticks mod 250_000 == 0:
-      putCharAt(spinner[index mod len(spinner)], 61, 156)
-      inc index
-      sleep()
-    # inc ticks
-    # asm "pause"
-
 proc NimMain() {.cdecl, importc.}
 
 proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.exportc.} =
@@ -54,8 +42,3 @@ proc efiMain*(imageHandle: EfiHandle, systemTable: ptr EfiSystemTable): uint {.e
   # var fb = initFramebuffer(gop.mode.frameBufferBase, width=1280, height=1024)
 
   main.init(sysTable)
-
-  #############################################
-  ##  Exit UEFI Boot Services
-
-  # let ebsStatus = sysTable.bootServices.exitBootServices(imageHandle, memoryMapKey)

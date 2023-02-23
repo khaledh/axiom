@@ -1,7 +1,7 @@
 import std/base64
 
 type
-  Font16* = object
+  Font* = object
     width*: int
     height*: int
     glyphs*: ptr UncheckedArray[array[16, byte]]
@@ -95,13 +95,8 @@ const
   """
 
 var dina8x16*: seq[byte]
-var glyphs8x16*: ptr array[256, array[16, byte]]
 
-proc loadFont*() =
-  dina8x16 = cast[seq[byte]](dina8x16Base64.decode())
-  glyphs8x16 = cast[ptr array[256, array[16, byte]]](addr dina8x16[32])
-
-proc loadFont16*(): Font16 =
+proc loadFont*(): Font =
   dina8x16 = cast[seq[byte]](dina8x16Base64.decode())
   let glyphs8x16 = cast[ptr UncheckedArray[array[16, byte]]](addr dina8x16[32])
-  Font16(width: 8, height: 16, glyphs: glyphs8x16)
+  Font(width: 8, height: 16, glyphs: glyphs8x16)
