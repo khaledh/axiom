@@ -1,3 +1,5 @@
+{.used.}
+
 var
   heap*: array[0..128*1024, float64]
   heapBumpPtr*: int = cast[int](addr heap)

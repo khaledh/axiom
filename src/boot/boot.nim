@@ -1,7 +1,7 @@
 import uefitypes
 import ../debug
 import ../kernel/devices/console
-import ../kernel/[main, thread]
+import ../kernel/main
 import ../lib/[libc, malloc]
 
 
