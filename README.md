@@ -2,6 +2,8 @@
 
 This is my attempt at creating a modern 64-bit kernel in Nim.
 
+![Axiom OS](screenshot.png)
+
 ## Requirements
 
 - Nim 1.9.1
