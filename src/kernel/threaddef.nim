@@ -12,6 +12,7 @@ type
     tsReady
     tsRunning
     tsBlocked
+    tsSleeping
     tsTerminated
 
   ThreadPriority* = -7..8
@@ -19,11 +20,13 @@ type
   Thread* = ref object
     rsp*: uint64
     id*: uint64
+    name*: string
     prev*: Thread
     next*: Thread
     stack*: ThreadStack
     priority*: ThreadPriority
     state*: ThreadState
+    sleepUntil*: uint64
 
   ThreadFunc* = proc () {.cdecl.}
 
@@ -54,9 +57,10 @@ var
   # priority queues
   readyQueue*: HeapQueue[Thread]
   blockedQueue*: HeapQueue[Thread]
+  sleepingQueue*: HeapQueue[Thread]
 
 
-proc contextSwitch*(oldThread, newThread: Thread) {.asmNoStackFrame.} =
+proc switchToThread*(oldThread, newThread: Thread) {.asmNoStackFrame.} =
   asm """
     push    rax
     push    rcx

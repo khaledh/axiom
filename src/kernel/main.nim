@@ -23,6 +23,16 @@ import ../shell
 const BgColor = 0x26486B'u32
 
 
+proc spinner() {.cdecl.} =
+  const spinner = ['-', '\\', '|', '/']
+  var index = 0
+
+  while true:
+      putCharAt(spinner[index mod len(spinner)], 61, 156)
+      inc index
+      sleep(50)
+
+
 proc init*(sysTable: ptr EfiSystemTable) =
   #############################################
   ##  Initialize graphics
@@ -80,7 +90,19 @@ proc init*(sysTable: ptr EfiSystemTable) =
   ##  Setup devices
 
   keyboard.init(keyHandler)
+
+  #############################################
+  ## Setup timer
+
+  proc timerCallback() {.cdecl.} =
+    # writeln("timerCallback")
+    sched.schedule(tsReady)
+
   timer.init()
+  let timerIndex = timer.registerTimerCallback(timerCallback)
+  if timerIndex == -1:
+    writeln("Failed to register timer callback")
+    quit(1)
 
   #############################################
   ##  Bring the rest of the kernel up
@@ -90,8 +112,6 @@ proc init*(sysTable: ptr EfiSystemTable) =
   shell.init(sysTable)
   # let t1 = createThread(shell.start)
 
-  # createThread(spinner).start()
-
   #############################################
   ##  Exit UEFI Boot Services
 
@@ -100,18 +120,8 @@ proc init*(sysTable: ptr EfiSystemTable) =
   #############################################
   ##  Start idle thread
 
-  var t0 = createThread(idle, ThreadPriority.low)
-  jumpToThread(t0)
+  var idleThread = createThread(idle, ThreadPriority.low, "idle")
 
+  createThread(spinner, name = "spinner").start()
 
-# proc spinner() {.cdecl.} =
-#   const spinner = ['-', '\\', '|', '/']
-#   var index = 0
-
-#   while true:
-#     # if ticks mod 250_000 == 0:
-#       putCharAt(spinner[index mod len(spinner)], 61, 156)
-#       inc index
-#       sleep()
-#     # inc ticks
-#     # asm "pause"
+  jumpToThread(idleThread)

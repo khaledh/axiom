@@ -117,11 +117,13 @@ proc showHelp() =
   writeln("  bye           Alias to 'shutdown'")
 
 proc showAbout() =
-  writeln("Axiom OS")
-  writeln("(c) 2022 Khaled Hammouda <khaledh@gmail.com>")
+  writeln("Axiom OS 0.1.0")
+  writeln("Copyright (c) 2022-2023 Khaled Hammouda <khaledh@gmail.com>")
 
 proc dispatchCommand(cmd: string) =
   case cmd:
+  of "":
+    discard
   of "help":
     showHelp()
   of "about":

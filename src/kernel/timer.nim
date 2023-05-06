@@ -1,28 +1,47 @@
+import std/strformat
+
 import devices/console
-import idt, lapic, sched, threaddef
+import cpu, idt, lapic
 
+type
+  TimerCallback* = proc () {.cdecl.}
 
-var ticks: uint64 = 0
+var
+  timerTicks*: uint64 = 0
+  timerCallbacks*: array[16, TimerCallback]
+
 
 proc timerInterruptHandler*(intFrame: pointer)
     {.cdecl, codegenDecl: "__attribute__ ((interrupt)) $# $#$#".} =
 
-  # if ticks mod 250 == 0 and ticks < 2000:
-  #   showThreads()
+  disableInterrupts()
 
-  if ticks mod 10 == 0:
-    # write(&"{(ticks div 10) mod 10}")
+  if timerTicks mod 10 == 0:
+    # write(&"{(timerTicks div 10) mod 10}")
     console.flush()
-  # if ticks mod 1000 == 0:
-  #   showThreads()
 
-  inc(ticks)
+  inc(timerTicks)
 
   lapic.eoi()
 
-  if ticks mod 10 == 0:
-    schedule(tsReady)
+  if timerTicks mod 10 == 0:
+    for i in 0 .. timerCallbacks.high:
+      if not isNil(timerCallbacks[i]):
+        timerCallbacks[i]()
+
 
 proc init*() =
   idt.setInterruptHandler(0x20, timerInterruptHandler)
   lapic.setTimer(0x20)
+
+
+proc registerTimerCallback*(callback: TimerCallback): int =
+  for i in 0 .. timerCallbacks.high:
+    if isNil(timerCallbacks[i]):
+      timerCallbacks[i] = callback
+      return i
+  return -1
+
+
+proc getTimerTicks*(): uint64 =
+  result = timerTicks

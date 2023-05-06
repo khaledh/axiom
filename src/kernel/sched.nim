@@ -2,64 +2,17 @@ import std/[heapqueue, strformat]
 
 import devices/console
 import threaddef
+import timer
 
-proc schedule*(newState: ThreadState) =
-  # writeln(&"(s:{thCurr.id})")
-  # showThreads()
-  # writeln(&"thCurr.id: {thCurr.id:x}h, thCurr @ {cast[uint64](thCurr):x}")
-
-  thCurr.state = newState
-
-  case newState:
-  of tsReady: readyQueue.push(thCurr)
-  of tsBlocked: blockedQueue.push(thCurr)
-  else: discard
-
-  # get highest priority thread
-  if readyQueue.len > 0:
-    var thNext = readyQueue.pop()
-    thNext.state = tsRunning
-
-    # writeln(&"=> thNext.id: {thNext.id}, thNext.state: {thNext.state}")
-
-    # if thCurr.state == tsTerminated:
-    #   halt()
-    # if thNext == thCurr:
-    #   # same thread, no context switch
-    #   return
-
-    if newState == tsTerminated:
-      jumpToThread(thNext)
-    elif thNext.id != thCurr.id and thNext.priority >= thCurr.priority:
-      var thTemp = thCurr
-      thCurr = thNext
-      contextSwitch(thTemp, thNext)
-
-
-proc start*(thread: Thread) =
-  thread.state = tsReady
-  readyQueue.push(thread)
-
-  # showThreads()
-
-# proc terminateThread(thread: Thread) =
-#   thread.state = tsTerminated
-
-#   if thHead == thread:
-#     thHead = thread.next
-#   if thTail == thread:
-#     thTail = thread.prev
-
-#   thread.prev.next = thread.next
-#   thread.next.prev = thread.prev
 
 proc showThread(th: Thread) =
-  writeln(&"  id={th.id}, addr={cast[uint64](th):x}h, state={th.state}, priority={th.priority}")
+  writeln(&"  id={th.id}, addr={cast[uint64](th):x}h, state={th.state:<10}, priority={th.priority:>2}, name={th.name}")
+
 
 proc showThreads*() =
   writeln("")
 
-  writeln("Running:")
+  writeln("Current:")
   showThread(thCurr)
 
   if readyQueue.len > 0:
@@ -71,6 +24,57 @@ proc showThreads*() =
     writeln("Blocked:")
     for i in 0 ..< blockedQueue.len:
       showThread(blockedQueue[i])
+
+  if sleepingQueue.len > 0:
+    writeln("Sleeping:")
+    for i in 0 ..< sleepingQueue.len:
+      showThread(sleepingQueue[i])
+      writeln(&"    sleep until: {sleepingQueue[i].sleepUntil}")
+
+
+proc schedule*(newState: ThreadState) {.cdecl.} =
+  thCurr.state = newState
+
+  case newState:
+  of tsReady:
+    readyQueue.push(thCurr)
+  of tsBlocked:
+    blockedQueue.push(thCurr)
+  of tsSleeping:
+    sleepingQueue.push(thCurr)
+  else: discard
+
+  for i in 0 ..< sleepingQueue.len:
+    var thSleeping = sleepingQueue[i]
+    if thSleeping.sleepUntil <= getTimerTicks():
+      discard sleepingQueue.pop()
+      thSleeping.sleepUntil = 0
+      thSleeping.state = tsReady
+      readyQueue.push(thSleeping)
+
+  # get highest priority thread
+  if readyQueue.len > 0:
+    var thNext = readyQueue.pop()
+    thNext.state = tsRunning
+
+    if newState == tsTerminated:
+      jumpToThread(thNext)
+
+    if thNext.id != thCurr.id and (thNext.priority >= thCurr.priority or thCurr.state != tsReady):
+      var thTemp = thCurr
+      thCurr = thNext
+      switchToThread(thTemp, thNext)
+
+
+proc start*(thread: Thread) =
+  thread.state = tsReady
+  readyQueue.push(thread)
+
+
+proc sleep*(ticks: uint64) =
+  thCurr.sleepUntil = timerTicks + ticks
+  schedule(tsSleeping)
+
 
 proc init*() =
   thCurr = nil

@@ -26,12 +26,13 @@ proc kernelThread(function: ThreadFunc) =
   # writeln(&"thread {thCurr.id} terminated")
   schedule(tsTerminated)
 
-proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0): Thread =
+proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0, name: string = ""): Thread =
   # if nextAvailableId >= len(threads).uint64:
   #   return nil
 
   var thNew = new(Thread)
   thNew.id = nextAvailableId; inc(nextAvailableId)
+  thNew.name = name
   thNew.state = tsNew
   thNew.priority = priority
   thNew.prev = nil
@@ -48,6 +49,3 @@ proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0): Thread =
   # writeln(&"kernelThread @ {cast[uint64](kernelThread):x}")
 
   result = thNew
-
-proc sleep*() =
-  schedule(tsBlocked)
