@@ -1,7 +1,7 @@
 import std/strformat
 
 import ../uefitypes
-import ../../debug
+import ../../kernel/debug
 
 
 proc showGop*(gop: ptr EfiGraphicsOutputProtocol) =

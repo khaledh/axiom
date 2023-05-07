@@ -1,7 +1,7 @@
 import std/strformat
 
 import ../kernel/cpu
-import ../debug
+import ../kernel/debug
 
 {.compile: "libc.c".}
 {.used.}

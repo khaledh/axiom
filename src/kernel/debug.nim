@@ -1,4 +1,4 @@
-import boot/uefitypes
+import ../boot/uefitypes
 
 var conOut: ptr SimpleTextOutputInterface
 

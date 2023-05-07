@@ -4,7 +4,7 @@
 import std/strformat
 
 import ../cpu
-import ../../debug
+import ../debug
 
 const
   BgaPortIndex               = 0x1ce
