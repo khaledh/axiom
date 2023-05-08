@@ -14,10 +14,7 @@
   - ioapic
 ]#
 
-import std/strformat
-
 import acpi/madt
-import devices/console
 
 ###############################################################################
 # public
@@ -36,7 +33,6 @@ var
 
 proc init*(madt: ptr Madt): Ioapic
 proc setRedirEntry*(ioapic: Ioapic, irq: uint8, vector: uint8)
-proc show*(ioapic: Ioapic)
 
 ###############################################################################
 # private
@@ -100,23 +96,3 @@ proc setRedirEntry(ioapic: Ioapic, irq: uint8, vector: uint8) =
   let regIndex = 0x10 + (irq * 2)
   ioapic.writeRegister(regIndex + 0, cast[uint32](cast[uint64](entry) and 0xffff))
   ioapic.writeRegister(regIndex + 1, cast[uint32](cast[uint64](entry) shr 32))
-
-proc show*(ioapic: Ioapic) =
-  writeln("")
-  writeln("I/O APIC")
-
-  let ioapicId = cast[IoApicIdRegister](ioapic.readRegister(0))
-  let ioapicVer = cast[IoApicVersionRegister](ioapic.readRegister(1))
-  writeln(&"  ID = {ioapicId.id}")
-  writeln(&"  Address = {ioapic.address:x}h")
-  writeln(&"  Version = {ioapicVer.version:0>2x}h")
-  writeln(&"  MaxRedirectionEntry = {ioapicVer.maxRedirEntry}")
-  writeln("")
-  writeln("  IOREDTBL")
-  writeln("       Vector  DeliveryMode  DestMode  Dest  Polarity  TriggerMode  DeliveryStatus  RemoteIRR  Mask")
-  for i in 0..ioapicVer.maxRedirEntry:
-    let lo = ioapic.readRegister(2*i.int + 0x10)
-    let hi = ioapic.readRegister(2*i.int + 0x11)
-    let entry = cast[IoapicRedirectionEntry](hi.uint64 shl 32 or lo)
-    write(&"  [{i: >2}] {entry.vector:0>2x}h     {entry.deliveryMode: <12}  {entry.destinationMode: <8}  {entry.destination: <4}")
-    writeln(&"  {entry.polarity: <8}  {entry.triggerMode: <11}  {entry.deliveryStatus: <14}  {entry.remoteIrr: <9}  {entry.mask}")

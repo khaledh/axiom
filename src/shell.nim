@@ -22,11 +22,11 @@ import kernel/devices/console
 import kernel/devices/keyboard
 import kernel/inspect/ahci
 import kernel/inspect/cpu
+import kernel/inspect/ioapic
 import kernel/inspect/pci
 import kernel/inspect/smbios
 import kernel/gdt
 import kernel/idt
-import kernel/ioapic
 import kernel/lapic
 import kernel/paging
 import kernel/physmem
