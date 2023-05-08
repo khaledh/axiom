@@ -18,8 +18,8 @@ import std/[strformat, strutils]
 import boot/[uefi, uefi/simpletext, uefi/firmware, uefitypes]
 import kernel/debug
 import kernel/acpi/[fadt, madt, rsdp, xsdt]
-import kernel/devices/cpu
 import kernel/devices/console
+import kernel/devices/cpu
 import kernel/devices/keyboard
 import kernel/inspect/ahci
 import kernel/inspect/cpu
@@ -134,6 +134,7 @@ proc showHelp() =
 
   writeln("")
   writeln("Shell")
+  writeln("  busy          Simulate busy thread")
   writeln("  spinner on    Start the spinner thread")
   writeln("  spinner off   Stop the spinner thread")
 
@@ -151,6 +152,8 @@ proc showAbout() =
   writeln("Copyright (c) 2022-2023 Khaled Hammouda <khaledh@gmail.com>")
 
 proc dispatchCommand(cmd: string) =
+  debugln(&"shell: dispatching command: {cmd}")
+
   case cmd:
   of "":
     discard
@@ -186,7 +189,7 @@ proc dispatchCommand(cmd: string) =
     lapic.show()
 
   of "ioapic":
-    ioapic.show(ioapic0)
+    ioapic.show()
 
   of "pci":
     showPciConfig()
@@ -226,8 +229,17 @@ proc dispatchCommand(cmd: string) =
     shutdown()
 
   of "halt":
-    writeln("Halt")
+    write("Halt")
+    flush()
     halt()
+
+  of "threads":
+    showThreads()
+
+  of "busy":
+    for i in 0 .. 500_000_000:
+      if i mod 10_000_000 == 0:
+        write(".")
 
   of "spinner":
     writeln("usage: spinner on|off")
