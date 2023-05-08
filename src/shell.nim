@@ -27,6 +27,7 @@ import kernel/inspect/ioapic
 import kernel/inspect/lapic
 import kernel/inspect/pci
 import kernel/inspect/smbios
+import kernel/inspect/threads
 import kernel/gdt
 import kernel/paging
 import kernel/physmem
@@ -108,6 +109,10 @@ proc showHelp() =
   writeln("")
   writeln("Storage")
   writeln("  ahci          Show AHCI configuration")
+
+  writeln("")
+  writeln("Kernel")
+  writeln("  threads       Show kernel threads")
 
   writeln("")
   writeln("Other")

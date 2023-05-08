@@ -1,4 +1,5 @@
 import std/heapqueue
+import std/strformat
 
 const
   StackSize = 512
@@ -51,6 +52,9 @@ type
 # we want heap[0] to contian the thread with highest priority
 # so we invert the inequality here
 proc `<`*(a, b: Thread): bool = a.priority > b.priority
+
+proc `$`*(t: Thread): string =
+  result = &"Thread({t.id}, '{t.name}', pri={t.priority}, state={t.state})"
 
 var
   thCurr*: Thread
