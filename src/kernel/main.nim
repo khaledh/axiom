@@ -21,16 +21,6 @@ import ../lib/[libc, malloc]
 import ../shell
 
 
-proc spinner() {.cdecl.} =
-  const spinner = ['-', '\\', '|', '/']
-  var index = 0
-
-  while true:
-      putCharAt(spinner[index mod len(spinner)], 61, 156)
-      inc index
-      sleep(50)
-
-
 proc init*(sysTable: ptr EfiSystemTable) =
   debugln("boot: Axiom OS starting")
 
@@ -138,7 +128,6 @@ proc init*(sysTable: ptr EfiSystemTable) =
   var idleThread = createThread(idle, ThreadPriority.low, "idle")
 
   debugln("boot: Initializing shell")
-  createThread(spinner, name = "spinner").start()
 
   debugln("boot: Jumping to idle thread")
   jumpToThread(idleThread)

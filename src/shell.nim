@@ -16,6 +16,7 @@
 import std/[strformat, strutils]
 
 import boot/[uefi, uefi/simpletext, uefi/firmware, uefitypes]
+import kernel/debug
 import kernel/acpi/[fadt, madt, rsdp, xsdt]
 import kernel/devices/cpu
 import kernel/devices/console
@@ -31,11 +32,15 @@ import kernel/inspect/threads
 import kernel/gdt
 import kernel/paging
 import kernel/physmem
+import kernel/sched
 import kernel/system
+import kernel/thread
+import kernel/threaddef
 
 var
   sysTable: ptr EfiSystemTable
   lineBuffer: string
+  spinnerThread: Thread
 
 proc init*(st: ptr EfiSystemTable) =
   sysTable = st
@@ -52,6 +57,19 @@ proc start*() {.cdecl.} =
     # dispatch
 
   discard
+
+
+proc spinner() {.cdecl.} =
+  const spinner = ['-', '\\', '|', '/']
+  var index = 0
+
+  while true:
+      putCharAt(spinner[index mod len(spinner)], 62, 157)
+      inc index
+      sleep(50)
+
+proc clearSpinner() =
+  putCharAt(' ', 62, 157)
 
 proc dispatchCommand(cmd: string)
 
@@ -113,6 +131,11 @@ proc showHelp() =
   writeln("")
   writeln("Kernel")
   writeln("  threads       Show kernel threads")
+
+  writeln("")
+  writeln("Shell")
+  writeln("  spinner on    Start the spinner thread")
+  writeln("  spinner off   Stop the spinner thread")
 
   writeln("")
   writeln("Other")
@@ -205,6 +228,26 @@ proc dispatchCommand(cmd: string) =
   of "halt":
     writeln("Halt")
     halt()
+
+  of "spinner":
+    writeln("usage: spinner on|off")
+
+  of "spinner on":
+    if spinnerThread != nil:
+      writeln("shell: spinner thread already running")
+    else:
+      spinnerThread = createThread(spinner, name = "spinner")
+      debugln("shell: starting spinner thread")
+      spinnerThread.start()
+
+  of "spinner off":
+    if spinnerThread == nil:
+      writeln("shell: spinner thread not running")
+    else:
+      debugln("shell: stopping spinner thread")
+      spinnerThread.stop()
+      spinnerThread = nil
+      clearSpinner()
 
   else:
     writeln("Uknown command")
