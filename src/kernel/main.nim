@@ -14,6 +14,7 @@ import devices/console
 import devices/keyboard
 import devices/pic
 
+import ../kernel/debug
 import ../graphics/font
 import ../graphics/framebuffer
 import ../lib/[libc, malloc]
@@ -31,20 +32,25 @@ proc spinner() {.cdecl.} =
 
 
 proc init*(sysTable: ptr EfiSystemTable) =
+  debugln("boot: Axiom OS starting")
+
   #############################################
   ##  Initialize graphics
 
+  debugln("boot: Initializing graphics")
   bga.init()
 
   #############################################
   ##  Initialize framebuffer
 
+  debugln("boot: Initializing framebuffer")
   var fb = framebuffer.init(BgaLfbPhysicalAddress, width = 1280, height = 1024)
   fb.clear()
 
   #############################################
   ##  Initialize console
 
+  debugln("boot: Loading font")
   let font = loadFont()
   console.init(fb, left = 8, top = 16, font = font, maxCols = 158, maxRows = 62)
 
@@ -61,20 +67,26 @@ proc init*(sysTable: ptr EfiSystemTable) =
   #############################################
   ##  Initialize ACPI
 
+  debugln("boot: Initializing ACPI")
   acpi.init(sysTable)
 
   #############################################
   ##  Setup interrupts
 
   #  Local APICs
+  debugln("boot: Initializing LAPIC")
   lapic.init()
 
   # I/O APIC
+  debugln("boot: Initializing IOAPIC")
   ioapic0 = ioapic.init(madt0)
   # set keyboard interrupt: interrupt input 1 => vector 21h
   ioapic0.setRedirEntry(irq = 1, vector = 0x21)
 
+  debugln("boot: Disabling PIC")
   pic.disable()
+
+  debugln("boot: Initializing IDT")
   idt.init()
 
   # setInterruptHandler(0, isr00)
@@ -86,6 +98,7 @@ proc init*(sysTable: ptr EfiSystemTable) =
   #############################################
   ##  Setup devices
 
+  debugln("boot: Initializing keyboard")
   keyboard.init(keyHandler)
 
   #############################################
@@ -95,7 +108,10 @@ proc init*(sysTable: ptr EfiSystemTable) =
     # writeln("timerCallback")
     sched.schedule(tsReady)
 
+  debugln("boot: Initializing timer")
   timer.init()
+
+  debugln("boot: Registering timer callback")
   let timerIndex = timer.registerTimerCallback(timerCallback)
   if timerIndex == -1:
     writeln("Failed to register timer callback")
@@ -104,6 +120,7 @@ proc init*(sysTable: ptr EfiSystemTable) =
   #############################################
   ##  Bring the rest of the kernel up
 
+  debugln("boot: Initializing scheduler")
   sched.init()
 
   shell.init(sysTable)
@@ -117,8 +134,11 @@ proc init*(sysTable: ptr EfiSystemTable) =
   #############################################
   ##  Start idle thread
 
+  debugln("boot: Creating idle thread")
   var idleThread = createThread(idle, ThreadPriority.low, "idle")
 
+  debugln("boot: Initializing shell")
   createThread(spinner, name = "spinner").start()
 
+  debugln("boot: Jumping to idle thread")
   jumpToThread(idleThread)

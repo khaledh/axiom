@@ -1,4 +1,5 @@
 import ../boot/uefitypes
+import devices/ports
 
 var conOut: ptr SimpleTextOutputInterface
 
@@ -13,3 +14,12 @@ proc print*(str: string) =
 
 proc println*(str: string) =
   print(str & "\r\n")
+
+proc debug*(msgs: varargs[string]) =
+  for msg in msgs:
+    for ch in msg:
+      portOut8(0x402, ch.uint8)
+
+proc debugln*(msgs: varargs[string]) =
+  debug(msgs)
+  debug("\r\n")
