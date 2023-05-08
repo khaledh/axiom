@@ -100,6 +100,14 @@ proc newLine(con: var Console) =
 
   # flush(con)
 
+proc putTextAt*(con: var Console, str: string, row, col: int, fgColor = con.fgColor, bgColor = con.bgColor) =
+  for i, ch in str:
+    putCharAt(con, ch, row, col + i, fgColor, bgColor)
+
+proc putTextAt*(str: string, row, col: int, fgColor = conOut.fgColor, bgColor = conOut.bgColor) =
+  for i, ch in str:
+    putCharAt(conOut, ch, row, col + i, fgColor, bgColor)
+
 proc write*(con: var Console, str: string, fgColor = con.fgColor, bgColor = con.bgColor) =
   for i, ch in str:
     if ch == '\n':
@@ -133,6 +141,7 @@ proc writeln*(str: string, fgColor = conOut.fgColor, bgColor = conOut.bgColor) =
 
 proc onTimer() {.cdecl.} =
   if timerTicks mod 10 == 0:
+    putTextAt(&"{thCurr.name:>11}", 62, 145)
     flush()
 
 
