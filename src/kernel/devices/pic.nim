@@ -1,4 +1,4 @@
-import ../cpu
+import ports
 
 
 const

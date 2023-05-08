@@ -17,7 +17,7 @@ import std/[strformat, strutils]
 
 import boot/[uefi, uefi/simpletext, uefi/firmware, uefitypes]
 import kernel/acpi/[fadt, madt, rsdp, xsdt]
-import kernel/cpu
+import kernel/devices/cpu
 import kernel/devices/ahci
 import kernel/devices/console
 import kernel/devices/keyboard
@@ -29,6 +29,7 @@ import kernel/ioapic
 import kernel/lapic
 import kernel/paging
 import kernel/physmem
+import kernel/system
 
 var
   sysTable: ptr EfiSystemTable

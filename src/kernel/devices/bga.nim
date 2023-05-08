@@ -3,7 +3,7 @@
 ]#
 import std/strformat
 
-import ../cpu
+import ports
 import ../debug
 
 const

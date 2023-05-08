@@ -2,7 +2,7 @@ import std/strformat
 
 import ../boot/uefitypes
 import devices/console
-import cpu
+import devices/cpu
 
 proc showMemoryMap*(bs: ptr EfiBootServices): uint =
   var mapSize: uint = 0

@@ -2,7 +2,7 @@ import std/strformat
 import std/tables
 
 import console
-import ../cpu
+import ports
 
 
 const

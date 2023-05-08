@@ -1,7 +1,7 @@
 import std/strformat
 
 import devices/console
-import cpu
+import devices/cpu
 
 type
   IA32ApicBaseMsr* {.packed.} = object
