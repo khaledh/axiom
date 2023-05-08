@@ -1,26 +1,17 @@
-import std/strformat
-
-import devices/console
-import cpu, idt, lapic
+import idt, lapic
 
 type
   TimerCallback* = proc () {.cdecl.}
 
 var
   timerTicks*: uint64 = 0
-  timerCallbacks*: array[16, TimerCallback]
+  timerCallbacks: array[16, TimerCallback]
 
 
 proc timerInterruptHandler*(intFrame: pointer)
     {.cdecl, codegenDecl: "__attribute__ ((interrupt)) $# $#$#".} =
 
-  disableInterrupts()
-
-  if timerTicks mod 10 == 0:
-    # write(&"{(timerTicks div 10) mod 10}")
-    console.flush()
-
-  inc(timerTicks)
+  inc timerTicks
 
   lapic.eoi()
 

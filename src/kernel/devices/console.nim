@@ -1,6 +1,7 @@
 import bitops
 import std/strformat
 
+import ../timer
 import ../../graphics/font
 import ../../graphics/framebuffer
 
@@ -35,12 +36,14 @@ var
   backbuffer {.align(16).}: array[1024*1280, uint32]
   backbufferStart: int
 
+proc onTimer() {.cdecl.}
 
 proc init*(fb: Framebuffer, left, top: int, font: Font, maxCols, maxRows: int, currCol, currRow: int = 0, color: uint32 = 0) =
   backbufferStart = 0
   for i in 0 ..< 1024*1280:
       backbuffer[i] = color
   conOut = Console(fb: fb, left: left, top: top, font: font, maxCols: maxCols, maxRows: maxRows, currCol: currCol, currRow: currRow, backColor: color)
+  discard timer.registerTimerCallback(onTimer)
 
 proc flush*(con: Console) =
   con.fb.copyBuffer(cast [ptr UncheckedArray[uint32]](addr backbuffer), backbufferStart)
@@ -120,6 +123,10 @@ proc writeln*(con: var Console, str: string, color: uint32 = DefaultForeground) 
 proc writeln*(str: string, color: uint32 = DefaultForeground) =
   writeln(conOut, str, color)
 
+
+proc onTimer() {.cdecl.} =
+  if timerTicks mod 10 == 0:
+    flush()
 
 
 proc showFont*() =
