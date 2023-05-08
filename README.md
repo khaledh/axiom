@@ -6,7 +6,7 @@ This is my attempt at creating a modern 64-bit kernel in Nim.
 
 ## Requirements
 
-- Nim 1.9.1
+- Nim 1.9.3
 - MinGW-w64
 - QEMU
 - UEFI BIOS image:
@@ -22,7 +22,7 @@ $ qemu-system-x86_64 \
     -drive format=raw,file.driver=vvfat,file.rw=on,file.dir=fatimg \
     -nic none \
     -machine q35 \
-    -monitor stdio
+    -debugcon stdio -global isa-debugcon.iobase=0x402
 ```
 
 Note that the above path for `OVMF_CODE.fd` is the default install path on Arch Linux. For Ubuntu
@@ -68,7 +68,7 @@ use the path `/usr/share/OVMF/OVMF_CODE.fd` instead.
   - [x] Keyboard IRQ handler
   - [x] Scancode conversion
   - [x] Key event packet
-  - [ ] Buffering
+  - [x] Buffering
 - [ ] Storage
   - [ ] SATA ACHI driver
 - [ ] File System
