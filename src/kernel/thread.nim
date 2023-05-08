@@ -1,6 +1,10 @@
-import devices/console
-import cpu, sched, threaddef
+import std/strformat
 
+import devices/console
+import devices/cpu
+import sched
+import threaddef
+import ../kernel/debug
 
 var
   nextAvailableId: uint64 = 0
@@ -32,6 +36,8 @@ proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0, name: str
 
   let id = nextAvailableId
   inc nextAvailableId
+
+  debugln(&"thread: creating new thread: id={id}, name='{name}', pri={priority}")
 
   var thNew = new(Thread)
   thNew.id = id
