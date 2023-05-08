@@ -23,6 +23,7 @@ import kernel/devices/console
 import kernel/devices/keyboard
 import kernel/devices/pci
 import kernel/devices/smbios
+import kernel/inspect/cpu
 import kernel/gdt
 import kernel/idt
 import kernel/ioapic
