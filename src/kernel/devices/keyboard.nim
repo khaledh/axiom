@@ -1,6 +1,9 @@
-import ../cpu
+import std/strformat
+
+import ports
 import ../idt
 import ../lapic
+import ../../kernel/debug
 
 
 const
@@ -30,26 +33,58 @@ const
 
 type
   KeyEventType* = enum
-    KeyDown
-    KeyUp
+    KeyDown = (0, "KeyDown")
+    KeyUp = (1, "KeyUp")
   KeyEvent* = object
     eventType*: KeyEventType
+    scanCode: uint8
     ch*: char
     shift*: bool
     ctrl*: bool
     alt*: bool
   KeyEventHandler* = proc (evt: KeyEvent)
 
-
 var
   shift, ctrl, alt = false
   handleKeyEvent: KeyEventHandler
+
+proc `$`*(evt: KeyEvent): string =
+  result.add($evt.eventType)
+  if evt.ch == '\0':
+    result.add("(NUL)")
+  elif evt.ch == '\x1B':
+    result.add("(ESC)")
+  elif evt.ch == '\n':
+    result.add("(LF)")
+  elif evt.ch == '\t':
+    result.add("(TAB)")
+  elif evt.ch == '\b':
+    result.add("(BS)")
+  elif evt.ch == '\r':
+    result.add("(CR)")
+  elif evt.ch == ' ':
+    result.add("(SP)")
+  elif evt.scanCode == 0x48:
+    result.add("(UP)")
+  elif evt.scanCode == 0x50:
+    result.add("(DOWN)")
+  elif evt.scanCode == 0x4b:
+    result.add("(LEFT)")
+  elif evt.scanCode == 0x4d:
+    result.add("(RIGHT)")
+  else:
+    result.add("('" & $evt.ch & "')")
+  result.add(&" scanCode={evt.scanCode:0>2x}h")
+  if evt.shift: result.add(" shift")
+  if evt.ctrl: result.add(" ctrl")
+  if evt.alt: result.add(" alt")
 
 {.push stackTrace:off.}
 proc kbdInterruptHandler*(intFrame: pointer)
     {.cdecl, codegenDecl: "__attribute__ ((interrupt)) $# $#$#".}=
 
   var scanCode = portIn8(0x60)
+  debugln(&"keyboard: scanCode = {scanCode:0>2x}h")
 
   if (scanCode and 0x80) == 0:
     # key press down
@@ -63,13 +98,13 @@ proc kbdInterruptHandler*(intFrame: pointer)
           ch = kbdUsShift[scanCode]
         elif scanCode < kbdUs.len:
           ch = kbdUs[scanCode]
-        handleKeyEvent(KeyEvent(
-          eventType: KeyDown,
-          ch: ch,
-          shift: shift,
-          ctrl: ctrl,
-          alt: alt,
-        ))
+        let keyEvent = KeyEvent(
+          eventType: KeyDown, ch: ch, scanCode: scanCode,
+          shift: shift, ctrl: ctrl, alt: alt
+        )
+        debugln("keyboard: keyEvent = ", $keyEvent)
+        if not isNil(handleKeyEvent):
+          handleKeyEvent(keyEvent)
 
   else:
     # key release
@@ -84,18 +119,18 @@ proc kbdInterruptHandler*(intFrame: pointer)
           ch = kbdUsShift[scanCode]
         elif scanCode < kbdUs.len:
           ch = kbdUs[scanCode]
-        handleKeyEvent(KeyEvent(
-          eventType: KeyUp,
-          ch: ch,
-          shift: shift,
-          ctrl: ctrl,
-          alt: alt,
-        ))
+        let keyEvent = KeyEvent(
+          eventType: KeyUp, ch: ch, scanCode: scanCode,
+          shift: shift, ctrl: ctrl, alt: alt
+        )
+        debugln("keyboard: keyEvent = ", $keyEvent)
+        if not isNil(handleKeyEvent):
+          handleKeyEvent(keyEvent)
 
   lapic.eoi()
 {.pop.}
 
 proc init*(handler: KeyEventHandler) =
   handleKeyEvent = handler
-  # writeln("  Setting keyboard interrupt handler (0x21)")
+  debugln("keyboard: Setting keyboard interrupt handler (0x21)")
   setInterruptHandler(0x21, kbdInterruptHandler)
