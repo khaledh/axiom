@@ -18,11 +18,11 @@ import std/[strformat, strutils]
 import boot/[uefi, uefi/simpletext, uefi/firmware, uefitypes]
 import kernel/acpi/[fadt, madt, rsdp, xsdt]
 import kernel/devices/cpu
-import kernel/devices/ahci
 import kernel/devices/console
 import kernel/devices/keyboard
 import kernel/devices/pci
 import kernel/devices/smbios
+import kernel/inspect/ahci
 import kernel/inspect/cpu
 import kernel/gdt
 import kernel/idt
