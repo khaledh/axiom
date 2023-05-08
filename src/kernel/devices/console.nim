@@ -1,9 +1,13 @@
 import bitops
 import std/strformat
 
+import ../queues
 import ../timer
+import ../threaddef
+import ../../kernel/debug
 import ../../graphics/font
 import ../../graphics/framebuffer
+import keyboard
 
 
 const
@@ -156,3 +160,18 @@ proc showFont*() =
   writeln(&"  CharSize = {cast[ptr uint32](addr dina8x16[20])[]}")
   writeln(&"  Height   = {cast[ptr uint32](addr dina8x16[24])[]}")
   writeln(&"  Width    = {cast[ptr uint32](addr dina8x16[28])[]}")
+
+
+const
+  MaxPendingKeyEvents = 64
+
+var
+  keyEventQueue = newBlockingQueue[KeyEvent](MaxPendingKeyEvents)
+
+proc keyEventHandler*(keyEvent: KeyEvent) =
+  debugln("console: received keyEvent, enqueueing (no wait)")
+  keyEventQueue.enqueueNoWait(keyEvent)
+
+proc readKeyEvent*(): KeyEvent =
+  debugln("console: reading keyEvent (wait)")
+  result = keyEventQueue.dequeue

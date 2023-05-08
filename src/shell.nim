@@ -39,24 +39,15 @@ import kernel/threaddef
 
 var
   sysTable: ptr EfiSystemTable
-  lineBuffer: string
+  lastLine: string
   spinnerThread: Thread
 
 proc init*(st: ptr EfiSystemTable) =
   sysTable = st
 
-proc start*() {.cdecl.} =
-
-  # loop
-  writeln("] ")
-
-    # read input
-
-    # find handler
-
-    # dispatch
-
-  discard
+proc showStatusBar() =
+  putTextAt(" ".repeat(158), 62, 0, bgColor = LighterBlue)
+  putTextAt("Axiom OS 0.1.0", 62, 0, fgColor = DarkOrange, bgColor = LighterBlue)
 
 
 proc spinner() {.cdecl.} =
@@ -73,20 +64,47 @@ proc clearSpinner() =
 
 proc dispatchCommand(cmd: string)
 
-proc keyHandler*(evt: KeyEvent) =
-  if evt.eventType == KeyDown and evt.ch != '\0':
-    if evt.ch == '\n':
-      writeln("")
-      dispatchCommand(lineBuffer)
-      writeln("")
-      write("] ")
-      lineBuffer = ""
-    elif evt.ch == '\b':
-      lineBuffer.delete(len(lineBuffer)-1 .. len(lineBuffer)-1)
-      write(&"{evt.ch}")
-    else:
-      lineBuffer &= evt.ch
-      write(&"{evt.ch}")
+proc readLine(): string =
+  debugln("shell: reading line")
+  var evt = console.readKeyEvent()
+  if evt.eventType == KeyDown and evt.ch == '\x18':
+    # up arrow
+    result = lastLine
+    writeln(result)
+
+  while true:
+    debugln(&"shell: got key event: {evt}")
+    if evt.eventType == KeyDown and evt.ch != '\0':
+      if evt.ch == '\n':
+        debugln("shell: got newline")
+        lastLine = result
+        break
+      elif evt.ch == '\b':
+        debugln("shell: got backspace")
+        if len(result) > 0:
+          result.delete(result.len-1 .. result.len-1)
+          write(&"{evt.ch}")
+      elif evt.ch == '\x1b':
+        debugln("shell: got esc")
+        for i in 0 ..< len(result):
+          write("\b")
+        result = ""
+      else:
+        debugln(&"shell: got character {evt.ch:02x}h")
+        result &= evt.ch
+        write(&"{evt.ch}")
+    elif evt.eventType == KeyUp:
+      debugln("shell: got key up")
+    evt = console.readKeyEvent()
+
+proc start*() {.cdecl.} =
+  while true:
+    # showStatusBar()
+    write("] ")
+    let line = readLine()
+    writeln("")
+    dispatchCommand(line)
+    writeln("")
 
 proc showHelp() =
   writeln("")

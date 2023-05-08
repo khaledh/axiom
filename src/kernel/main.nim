@@ -52,7 +52,6 @@ proc init*(sysTable: ptr EfiSystemTable) =
   writeln("")
   writeln("Welcome to AxiomOS")
   writeln("")
-  write("] ")
 
   #############################################
   ##  Initialize ACPI
@@ -89,7 +88,7 @@ proc init*(sysTable: ptr EfiSystemTable) =
   ##  Setup devices
 
   debugln("boot: Initializing keyboard")
-  keyboard.init(keyHandler)
+  keyboard.init(console.keyEventHandler)
 
   #############################################
   ## Setup timer
@@ -113,7 +112,6 @@ proc init*(sysTable: ptr EfiSystemTable) =
   debugln("boot: Initializing scheduler")
   sched.init()
 
-  shell.init(sysTable)
   # let t1 = createThread(shell.start)
 
   #############################################
@@ -128,6 +126,8 @@ proc init*(sysTable: ptr EfiSystemTable) =
   var idleThread = createThread(idle, ThreadPriority.low, "idle")
 
   debugln("boot: Initializing shell")
+  shell.init(sysTable)
+  createThread(shell.start, name = "shell").start()
 
   debugln("boot: Jumping to idle thread")
   jumpToThread(idleThread)
