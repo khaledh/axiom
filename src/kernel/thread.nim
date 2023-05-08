@@ -30,8 +30,11 @@ proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0, name: str
   # if nextAvailableId >= len(threads).uint64:
   #   return nil
 
+  let id = nextAvailableId
+  inc nextAvailableId
+
   var thNew = new(Thread)
-  thNew.id = nextAvailableId; inc(nextAvailableId)
+  thNew.id = id
   thNew.name = name
   thNew.state = tsNew
   thNew.priority = priority
@@ -39,8 +42,7 @@ proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0, name: str
   thNew.next = nil
 
   thNew.stack = new(ThreadStack)
-  thNew.rsp = cast[uint64](thNew.stack) + sizeof(ThreadStackArray).uint64 - sizeof(
-      SwitchStack).uint64 - 128
+  thNew.rsp = cast[uint64](thNew.stack) + sizeof(ThreadStackArray).uint64 - sizeof(SwitchStack).uint64 - 128
 
   var ss = cast[ptr SwitchStack](thNew.rsp)
   zeroMem(ss, sizeof(SwitchStack))
