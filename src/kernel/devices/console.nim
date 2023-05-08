@@ -7,15 +7,20 @@ import ../../graphics/framebuffer
 
 
 const
-  DefaultForeground* = 0xd4dae7
-  DarkGrey* = 0x222629
-  DarkGreyBlue* = 0x353d45
-  DarkerGreyBlue* = 0x252d35
-  Orange* = 0xf57956
-  Green* = 0x8ebb8a
-  LightBlue* = 0x90badf
-  Blue* = 0x608aaf
-  Blueish* = 0x4a8e97
+  DefaultBackground* = 0x26486B'u32
+  DefaultForeground* = 0xd4dae7'u32
+  DarkGrey* = 0x222629'u32
+  DarkGreyBlue* = 0x353d45'u32
+  DarkerGreyBlue* = 0x252d35'u32
+  Orange* = 0xf57956'u32
+  DarkOrange* = 0xc46c00'u32
+  Green* = 0x8ebb8a'u32
+  LightBlue* = 0x90badf'u32
+  LighterBlue* = 0xd4ebf2'u32
+  Blue* = 0x608aaf'u32
+  Blueish* = 0x4a8e97'u32
+  White* = 0xffffff'u32
+  Black* = 0x000000'u32
 
 type
   Console* = object
@@ -27,8 +32,8 @@ type
     maxRows: int
     currCol: int
     currRow: int
-    backColor: uint32
-    # tick: uint64
+    bgColor: uint32
+    fgColor: uint32
 
 var
   conOut*: Console
@@ -38,11 +43,13 @@ var
 
 proc onTimer() {.cdecl.}
 
-proc init*(fb: Framebuffer, left, top: int, font: Font, maxCols, maxRows: int, currCol, currRow: int = 0, color: uint32 = 0) =
+proc init*(fb: Framebuffer, left, top: int, font: Font, maxCols, maxRows: int,
+           currCol = 0, currRow = 0, fgColor = DefaultForeground, bgColor = DefaultBackground) =
   backbufferStart = 0
   for i in 0 ..< 1024*1280:
-      backbuffer[i] = color
-  conOut = Console(fb: fb, left: left, top: top, font: font, maxCols: maxCols, maxRows: maxRows, currCol: currCol, currRow: currRow, backColor: color)
+      backbuffer[i] = bgColor
+  conOut = Console(fb: fb, left: left, top: top, font: font, maxCols: maxCols, maxRows: maxRows,
+                   currCol: currCol, currRow: currRow, bgColor: bgColor, fgColor: fgColor)
   discard timer.registerTimerCallback(onTimer)
 
 proc flush*(con: Console) =
@@ -58,12 +65,12 @@ proc scrollUp(con: var Console) =
   # clear the last line
   var start = ((backbufferStart + 1024) mod 1024) * 1280
   for i in start ..< start + 16*1280:
-      backbuffer[i] = con.backColor
+      backbuffer[i] = con.bgColor
 
   dec(con.currRow)
   # flush(con)
 
-proc putCharAt*(con: Console, ch: char, row, col: int, color: uint32 = DefaultForeground) =
+proc putCharAt*(con: Console, ch: char, row, col: int, fgColor = con.fgColor, bgColor = con.bgColor) =
   var xpos = con.left + col * con.font.width
   var ypos = con.top + row * con.font.height
 
@@ -71,19 +78,19 @@ proc putCharAt*(con: Console, ch: char, row, col: int, color: uint32 = DefaultFo
   let glyph = con.font.glyphs[ch.uint8]
   for yoff, row in glyph:
     for xoff in 1..8:
-      let clr = if (rotateLeftBits(row, xoff) and 1) == 1: color else: con.backColor
+      let clr = if (rotateLeftBits(row, xoff) and 1) == 1: fgColor else: bgColor
       backbuffer[(((backbufferStart + ypos + yoff) mod 1024) * 1280) + xpos + xoff - 1] = clr
 
   # flush(con)
 
-proc putCharAt*(ch: char, row, col: int, color: uint32 = DefaultForeground) =
-  conOut.putCharAt(ch, row, col, color)
+proc putCharAt*(ch: char, row, col: int, fgColor = conOut.fgColor, bgColor = conOut.bgColor) =
+  conOut.putCharAt(ch, row, col, fgColor, bgColor)
 
-proc putChar*(con: Console, ch: char, color: uint32 = DefaultForeground) =
-  putCharAt(con, ch, con.currRow, con.currCol, color)
+proc putChar*(con: Console, ch: char, fgColor = con.fgColor, bgColor = con.bgColor) =
+  putCharAt(con, ch, con.currRow, con.currCol, fgColor, bgColor)
 
-proc putChar*(ch: char, color: uint32 = DefaultForeground) =
-  putCharAt(conOut, ch, conOut.currRow, conOut.currCol, color)
+proc putChar*(ch: char, fgColor = conOut.fgColor, bgColor = conOut.bgColor) =
+  putCharAt(conOut, ch, conOut.currRow, conOut.currCol, fgColor, bgColor)
 
 proc newLine(con: var Console) =
   con.currCol = 0
@@ -93,19 +100,19 @@ proc newLine(con: var Console) =
 
   # flush(con)
 
-proc write*(con: var Console, str: string, color: uint32 = DefaultForeground) =
+proc write*(con: var Console, str: string, fgColor = con.fgColor, bgColor = con.bgColor) =
   for i, ch in str:
     if ch == '\n':
       # clear cursor
-      con.putChar(' ')
+      con.putChar(' ', fgColor, bgColor)
       con.newLine()
     elif ch == '\b':
       if con.currCol > 0:
-        con.putChar(' ')
+        con.putChar(' ', fgColor, bgColor)
         dec(con.currCol)
-        con.putChar(' ')
+        con.putChar(' ', fgColor, bgColor)
     else:
-      putChar(con, ch, color)
+      putChar(con, ch, fgColor, bgColor)
       inc(con.currCol)
       if con.currCol >= con.maxCols:
         con.newLine()
@@ -113,15 +120,15 @@ proc write*(con: var Console, str: string, color: uint32 = DefaultForeground) =
   # cursor
   con.putChar('_')
 
-proc write*(str: string, color: uint32 = DefaultForeground) =
-  write(conOut, str, color)
+proc write*(str: string, fgColor = conOut.fgColor, bgColor = conOut.bgColor) =
+  write(conOut, str, fgColor, bgColor)
 
-proc writeln*(con: var Console, str: string, color: uint32 = DefaultForeground) =
-  write(con, str & "\n", color)
+proc writeln*(con: var Console, str: string, fgColor = con.fgColor, bgColor = con.bgColor) =
+  write(con, str & "\n", fgColor, bgColor)
   # flush(con)
 
-proc writeln*(str: string, color: uint32 = DefaultForeground) =
-  writeln(conOut, str, color)
+proc writeln*(str: string, fgColor = conOut.fgColor, bgColor = conOut.bgColor) =
+  writeln(conOut, str, fgColor, bgColor)
 
 
 proc onTimer() {.cdecl.} =

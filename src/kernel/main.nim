@@ -20,9 +20,6 @@ import ../lib/[libc, malloc]
 import ../shell
 
 
-const BgColor = 0x26486B'u32
-
-
 proc spinner() {.cdecl.} =
   const spinner = ['-', '\\', '|', '/']
   var index = 0
@@ -43,13 +40,13 @@ proc init*(sysTable: ptr EfiSystemTable) =
   ##  Initialize framebuffer
 
   var fb = framebuffer.init(BgaLfbPhysicalAddress, width = 1280, height = 1024)
-  fb.clear(BgColor)
+  fb.clear()
 
   #############################################
   ##  Initialize console
 
   let font = loadFont()
-  console.init(fb, left = 8, top = 16, font = font, maxCols = 158, maxRows = 62, color = BgColor)
+  console.init(fb, left = 8, top = 16, font = font, maxCols = 158, maxRows = 62)
 
   writeln("""    _          _                    ___  ____  """, 0xa0caef)
   writeln("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """, 0xa0caef)
