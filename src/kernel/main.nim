@@ -14,8 +14,8 @@ import devices/console
 import devices/keyboard
 import devices/pic
 
-import ../font
-import ../framebuffer
+import ../graphics/font
+import ../graphics/framebuffer
 import ../lib/[libc, malloc]
 import ../shell
 

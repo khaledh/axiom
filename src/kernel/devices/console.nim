@@ -1,8 +1,8 @@
 import bitops
 import std/strformat
 
-import ../../font
-import ../../framebuffer
+import ../../graphics/font
+import ../../graphics/framebuffer
 
 
 const
