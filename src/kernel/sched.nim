@@ -1,6 +1,5 @@
-import std/[heapqueue, sequtils, strformat, strutils]
+import std/[heapqueue, strformat, strutils]
 
-import devices/cpu
 import threaddef
 import timer
 import ../kernel/debug

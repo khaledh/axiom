@@ -1,6 +1,5 @@
 import ../boot/uefitypes
 import acpi, acpi/madt
-import cpu
 import idt
 import ioapic
 import lapic
@@ -11,6 +10,7 @@ import timer
 
 import devices/bga
 import devices/console
+import devices/cpu
 import devices/keyboard
 import devices/pic
 

@@ -1,6 +1,5 @@
 import std/tables
 
-import console
 import ports
 
 
