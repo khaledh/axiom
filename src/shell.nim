@@ -280,4 +280,4 @@ proc dispatchCommand(cmd: string) =
       clearSpinner()
 
   else:
-    writeln("Uknown command")
+    writeln("Unknown command")
