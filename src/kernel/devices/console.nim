@@ -2,8 +2,8 @@ import bitops
 import std/strformat
 
 import ../queues
+import ../sched
 import ../timer
-import ../threaddef
 import ../../kernel/debug
 import ../../graphics/font
 import ../../graphics/framebuffer
@@ -145,7 +145,7 @@ proc writeln*(str: string, fgColor = conOut.fgColor, bgColor = conOut.bgColor) =
 
 proc onTimer() {.cdecl.} =
   if timerTicks mod 10 == 0:
-    putTextAt(&"{thCurr.name:>11}", 62, 145)
+    putTextAt(&"{getCurrentThread().name:>11}", 62, 145)
     flush()
 
 

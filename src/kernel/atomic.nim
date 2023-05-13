@@ -1,7 +1,8 @@
-proc cmpxchg*(toChange: var bool, oldValue: bool, newValue: bool): bool {.inline.} =
+proc cmpxchg*(location: var bool, expected: bool, newval: bool): bool {.inline.} =
   asm """
     lock cmpxchg %0, %3
-    : "+m"(*`toChange`), "=a"(`result`)
-    : "a"(`oldValue`), "r"(`newValue`)
+    sete %1
+    : "+m"(*`location`), "=a"(`result`)
+    : "a"(`expected`), "r"(`newval`)
     : "memory"
   """

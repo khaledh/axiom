@@ -20,7 +20,7 @@ proc newSpinLock*(): SpinLock =
 
 method acquire*(l: SpinLock) =
   while true:
-    if cmpxchg(l.locked, oldValue = false, newValue = true):
+    if cmpxchg(l.locked, expected = false, newval = true):
       break
     asm "pause"
 

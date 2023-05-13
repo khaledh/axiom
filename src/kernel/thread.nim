@@ -1,6 +1,5 @@
 import std/strformat
 
-import devices/console
 import devices/cpu
 import sched
 import threaddef
@@ -10,30 +9,17 @@ var
   nextAvailableId: uint64 = 0
 
 proc kernelThread(function: ThreadFunc) =
-  # writeln("starting thread")
   function()
 
   disableInterrupts()
 
-  if thCurr.next == thCurr:
-    writeln("Halt")
+  if getCurrentThread().next == getCurrentThread():
+    debugln("Halt")
     halt()
 
-  # let thTemp = thCurr
-  # thCurr = thCurr.prev
-  # terminateThread(thTemp)
-  write("(k)")
-  # halt()
-  # thCurr.state = tsTerminated
-  # writeln(&"thCurr.id: {thCurr.id}, thCurr.state: {thCurr.state}")
-
-  # writeln(&"thread {thCurr.id} terminated")
   schedule(tsTerminated)
 
 proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0, name: string = ""): Thread =
-  # if nextAvailableId >= len(threads).uint64:
-  #   return nil
-
   let id = nextAvailableId
   inc nextAvailableId
 
@@ -54,6 +40,5 @@ proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0, name: str
   zeroMem(ss, sizeof(SwitchStack))
   ss.rcx = cast[uint64](function)
   ss.rip = cast[uint64](kernelThread)
-  # writeln(&"kernelThread @ {cast[uint64](kernelThread):x}")
 
   result = thNew

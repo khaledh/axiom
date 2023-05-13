@@ -5,14 +5,78 @@ import timer
 import ../kernel/debug
 
 
+var
+  thCurr*: Thread
+  readyQueue*: HeapQueue[Thread]
+  blockedQueue*: HeapQueue[Thread]
+  sleepingQueue*: HeapQueue[Thread]
+
+
+proc switchToThread(oldThread, newThread: Thread) {.asmNoStackFrame.} =
+  asm """
+    push    rax
+    push    rcx
+    push    rdx
+    push    rbx
+    push    rbp
+    push    rsi
+    push    rdi
+    push    r8
+    push    r9
+    push    r10
+    push    r11
+    push    r12
+    push    r13
+    push    r14
+    push    r15
+
+    # switch stacks
+    mov     [rcx], rsp
+    mov     rsp, [rdx]
+
+    jmp resumeThread
+  """
+
+proc resumeThread() {.asmNoStackFrame, exportc.} =
+  asm """
+    pop     r15
+    pop     r14
+    pop     r13
+    pop     r12
+    pop     r11
+    pop     r10
+    pop     r9
+    pop     r8
+    pop     rdi
+    pop     rsi
+    pop     rbp
+    pop     rbx
+    pop     rdx
+    pop     rcx
+    pop     rax
+
+    sti
+    ret
+  """
+
+proc become*(thread: Thread) {.cdecl.} =
+  thCurr = thread
+  thCurr.state = tsRunning
+
+  asm """
+    mov rsp, %0
+    jmp resumeThread
+    :
+    :"g"(`thread`->rsp)
+  """
+
+proc getCurrentThread*(): Thread {.inline.} =
+  result = thCurr
+
 proc removeFromQueue(th: Thread, queue: var HeapQueue) =
   let idx = queue.find(th)
-  # debugln(&"sched.removeFromQueue: id={th.id}, idx={idx}")
   if idx >= 0:
-    # debugln(&"sched.removeFromQueue: queue=[{$queue}] (before)")
     queue.del(idx)
-    # debugln(&"sched.removeFromQueue: queue=[{$queue}] (after)")
-
 
 proc schedule*(newState: ThreadState) {.cdecl.} =
   thCurr.state = newState
@@ -45,7 +109,7 @@ proc schedule*(newState: ThreadState) {.cdecl.} =
     thNext.state = tsRunning
 
     if newState == tsTerminated:
-      jumpToThread(thNext)
+      become(thNext)
 
     if thNext.id != thCurr.id and (thNext.priority >= thCurr.priority or thCurr.state != tsReady):
       var thTemp = thCurr
@@ -86,6 +150,10 @@ proc stop*(th: Thread) =
   removeFromQueue(th, blockedQueue)
   removeFromQueue(th, sleepingQueue)
   th.state = tsTerminated
+
+# proc join*(th: Thread) =
+#   while th.state != tsTerminated:
+#     th.finished.wait()
 
 
 proc init*() =

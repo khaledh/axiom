@@ -129,5 +129,5 @@ proc init*(sysTable: ptr EfiSystemTable) =
   shell.init(sysTable)
   createThread(shell.start, name = "shell").start()
 
-  debugln("boot: Jumping to idle thread")
-  jumpToThread(idleThread)
+  debugln("boot: Done; begin idle thread")
+  become(idleThread)

@@ -1,6 +1,7 @@
 import std/strformat
 import std/heapqueue
 
+import ../sched
 import ../threaddef
 import ../devices/console
 
@@ -13,7 +14,7 @@ proc showThreads*() =
   writeln("")
 
   writeln("Current:")
-  showThread(thCurr)
+  showThread(getCurrentThread())
 
   if readyQueue.len > 0:
     writeln("Ready:")
