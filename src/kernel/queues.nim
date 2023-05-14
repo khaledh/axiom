@@ -6,7 +6,7 @@ type
   BlockingQueue*[T] = ref object of RootObj
     maxSize*: int
     queue*: seq[T]
-    lock*: SpinLock
+    lock*: Lock
     notEmpty*: ConditionVar
     notFull*: ConditionVar
 
@@ -24,7 +24,7 @@ proc enqueue*[T](q: BlockingQueue[T], item: T) =
   debugln("blockingQ.enqueue: acquired lock")
   while q.queue.len == q.maxSize:
     debugln("blockingQ.enqueue: waiting for notFull")
-    q.notFull.wait
+    q.notFull.wait(q.lock)
   debugln("blockingQ.enqueue: notFull signaled, adding item")
   q.queue.add(item)
   debugln("blockingQ.enqueue: signaling notEmpty")
@@ -45,7 +45,7 @@ proc dequeue*[T](q: BlockingQueue[T]): T =
   debugln("blockingQ.dequeue: acquired lock")
   while q.queue.len == 0:
     debugln("blockingQ.dequeue: waiting for notEmpty")
-    q.notEmpty.wait
+    q.notEmpty.wait(q.lock)
   debugln("blockingQ.dequeue: notEmpty signaled, popping item")
   result = q.queue.pop
   debugln("blockingQ.dequeue: signaling notFull")

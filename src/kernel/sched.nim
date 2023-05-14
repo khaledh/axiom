@@ -151,7 +151,7 @@ proc transitionTo*(th: Thread, event: TransitionEvent): bool =
     else: discard
 
   else:
-    debugln(&"threaddef.transitionTo: invalid transition from {th.state} to {event.toState}")
+    debugln(&"sched.transitionTo: thread id={th.id} invalid transition from {th.state} to {event.toState}")
     return false
 
   th.state = event.toState
