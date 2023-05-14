@@ -17,10 +17,11 @@ import std/[strformat, strutils]
 
 import boot/[uefi, uefi/simpletext, uefi/firmware, uefitypes]
 import kernel/debug
-import kernel/acpi/[fadt, madt, rsdp, xsdt]
+import kernel/acpi/[fadt, rsdp]
 import kernel/devices/console
 import kernel/devices/cpu
 import kernel/devices/keyboard
+import kernel/inspect/[madt, xsdt]
 import kernel/inspect/ahci
 import kernel/inspect/cpu
 import kernel/inspect/idt
