@@ -6,10 +6,10 @@ import ../kernel/debug
 
 
 var
-  thCurr*: Thread
+  currentThread*: Thread
   readyQueue*: HeapQueue[Thread]
   blockedQueue*: HeapQueue[Thread]
-  sleepingQueue*: HeapQueue[Thread]
+  sleepingQueue*: HeapQueue[SleepingThread]
 
 
 proc switchToThread(oldThread, newThread: Thread) {.asmNoStackFrame.} =
@@ -60,8 +60,8 @@ proc resumeThread() {.asmNoStackFrame, exportc.} =
   """
 
 proc become*(thread: Thread) {.cdecl.} =
-  thCurr = thread
-  thCurr.state = tsRunning
+  currentThread = thread
+  currentThread.state = tsRunning
 
   asm """
     mov rsp, %0
@@ -71,37 +71,45 @@ proc become*(thread: Thread) {.cdecl.} =
   """
 
 proc getCurrentThread*(): Thread {.inline.} =
-  result = thCurr
+  result = currentThread
 
 proc removeFromQueue(th: Thread, queue: var HeapQueue) =
   let idx = queue.find(th)
   if idx >= 0:
     queue.del(idx)
 
+proc removeFromQueue(th: Thread, queue: var HeapQueue[SleepingThread]): SleepingThread =
+  for i in 0 ..< queue.len:
+    let sleeper = queue[i]
+    if sleeper.thread.id == th.id:
+      queue.del(i)
+      return sleeper
+
 proc schedule*(newState: ThreadState) {.cdecl.} =
-  thCurr.state = newState
+  currentThread.state = newState
 
   case newState:
   of tsReady:
-    readyQueue.push(thCurr)
+    readyQueue.push(currentThread)
   of tsBlocked:
-    blockedQueue.push(thCurr)
-  of tsSleeping:
-    sleepingQueue.push(thCurr)
+    blockedQueue.push(currentThread)
+  # of tsSleeping:
+  #   sleepingQueue.push(currentThread)
   else: discard
 
-  var toWakeUp: seq[Thread]
+  var toWakeUp: seq[SleepingThread]
   for i in 0 ..< sleepingQueue.len:
     let thSleeping = sleepingQueue[i]
     if thSleeping.sleepUntil > 0 and thSleeping.sleepUntil <= getTimerTicks():
       toWakeUp.add(thSleeping)
 
   for th in toWakeUp:
-    debugln(&"sched.schedule: th={th.id}, name={th.name}, wait expired")
+    var thread = th.thread
+    debugln(&"sched.schedule: th={thread.id}, name={thread.name}, wait expired")
     th.sleepUntil = 0
-    th.state = tsReady
-    removeFromQueue(th, sleepingQueue)
-    readyQueue.push(th)
+    thread.state = tsReady
+    discard removeFromQueue(thread, sleepingQueue)
+    readyQueue.push(thread)
 
   # get highest priority thread
   if readyQueue.len > 0:
@@ -111,9 +119,9 @@ proc schedule*(newState: ThreadState) {.cdecl.} =
     if newState == tsTerminated:
       become(thNext)
 
-    if thNext.id != thCurr.id and (thNext.priority >= thCurr.priority or thCurr.state != tsReady):
-      var thTemp = thCurr
-      thCurr = thNext
+    if thNext.id != currentThread.id and (thNext.priority >= currentThread.priority or currentThread.state != tsReady):
+      var thTemp = currentThread
+      currentThread = thNext
       switchToThread(thTemp, thNext)
 
 
@@ -123,23 +131,25 @@ proc start*(thread: Thread) =
   readyQueue.push(thread)
 
 
-proc sleep*() =
-  debugln(&"sched.sleep: id={thCurr.id}, name={thCurr.name}")
+proc wait*() =
+  debugln(&"sched.sleep: id={currentThread.id}, name={currentThread.name}")
   schedule(tsSleeping)
 
 
 proc sleep*(ticks: uint64) =
-  thCurr.sleepUntil = timerTicks + ticks
-  debugln(&"sched.sleep: id={thCurr.id}, name={thCurr.name}, until={thCurr.sleepUntil}")
+  var sleeper = SleepingThread()
+  sleeper.thread = currentThread
+  sleeper.sleepUntil = timerTicks + ticks
+  sleepingQueue.push(sleeper)
+  debugln(&"sched.sleep: id={sleeper.thread.id}, name={sleeper.thread.name}, until={sleeper.sleepUntil}")
   schedule(tsSleeping)
 
 
 proc wakeup*(th: Thread) =
   if th.state == tsSleeping:
     debugln("sched.wakeup: th=", $th.id, ", removing from sleepingQueue")
-    removeFromQueue(th, sleepingQueue)
+    discard removeFromQueue(th, sleepingQueue)
     debugln("sched.wakeup: th=", $th.id, ", sleepingQueue.len=", $sleepingQueue.len)
-    th.sleepUntil = 0
     th.state = tsReady
     debugln("sched.wakeup: th=", $th.id, ", adding to readyQueue")
     readyQueue.push(th)
@@ -148,7 +158,7 @@ proc stop*(th: Thread) =
   debugln(&"sched.stop: terminating thread id={th.id}, name={th.name}")
   removeFromQueue(th, readyQueue)
   removeFromQueue(th, blockedQueue)
-  removeFromQueue(th, sleepingQueue)
+  discard removeFromQueue(th, sleepingQueue)
   th.state = tsTerminated
 
 # proc join*(th: Thread) =
@@ -156,5 +166,14 @@ proc stop*(th: Thread) =
 #     th.finished.wait()
 
 
-proc init*() =
-  thCurr = nil
+proc timerCallback() {.cdecl.} =
+  schedule(tsReady)
+
+proc init*(initalThread: Thread) =
+  debugln("sched: Registering timer callback")
+  let timerIndex = timer.registerTimerCallback(timerCallback)
+  if timerIndex == -1:
+    debugln("sched: Failed to register timer callback")
+    quit(1)
+
+  become(initalThread)

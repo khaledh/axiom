@@ -22,6 +22,11 @@ import ../shell
 
 
 proc init*(sysTable: ptr EfiSystemTable) =
+  #############################################
+  ##  Exit UEFI Boot Services
+
+  # let status = sysTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
+
   debugln("boot: Axiom OS starting")
 
   #############################################
@@ -44,15 +49,6 @@ proc init*(sysTable: ptr EfiSystemTable) =
   let font = loadFont()
   console.init(fb, left = 8, top = 16, font = font, maxCols = 158, maxRows = 62)
 
-  writeln("""    _          _                    ___  ____  """, 0xa0caef)
-  writeln("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """, 0xa0caef)
-  writeln("""  / _ \  \ \/ / |/ _ \| '_ ` _ \  | | | \___ \ """, 0xa0caef)
-  writeln(""" / ___ \  >  <| | (_) | | | | | | | |_| |___) |""", 0xa0caef)
-  writeln("""/_/   \_\/_/\_\_|\___/|_| |_| |_|  \___/|____/ """, 0xa0caef)
-  writeln("")
-  writeln("Welcome to AxiomOS")
-  writeln("")
-
   #############################################
   ##  Initialize ACPI
 
@@ -69,8 +65,6 @@ proc init*(sysTable: ptr EfiSystemTable) =
   # I/O APIC
   debugln("boot: Initializing IOAPIC")
   ioapic0 = ioapic.init(madt0)
-  # set keyboard interrupt: interrupt input 1 => vector 21h
-  ioapic0.setRedirEntry(irq = 1, vector = 0x21)
 
   debugln("boot: Disabling PIC")
   pic.disable()
@@ -85,7 +79,7 @@ proc init*(sysTable: ptr EfiSystemTable) =
   # """
 
   #############################################
-  ##  Setup devices
+  ##  Setup keyboard
 
   debugln("boot: Initializing keyboard")
   keyboard.init(console.keyEventHandler)
@@ -93,41 +87,31 @@ proc init*(sysTable: ptr EfiSystemTable) =
   #############################################
   ## Setup timer
 
-  proc timerCallback() {.cdecl.} =
-    # writeln("timerCallback")
-    sched.schedule(tsReady)
-
   debugln("boot: Initializing timer")
   timer.init()
 
-  debugln("boot: Registering timer callback")
-  let timerIndex = timer.registerTimerCallback(timerCallback)
-  if timerIndex == -1:
-    writeln("Failed to register timer callback")
-    quit(1)
+  #############################################
+  ##  Welcome to Axiom
+
+  writeln("""    _          _                    ___  ____  """, 0xa0caef)
+  writeln("""   / \   __  _(_) ___  _ __ ___    / _ \/ ___| """, 0xa0caef)
+  writeln("""  / _ \  \ \/ / |/ _ \| '_ ` _ \  | | | \___ \ """, 0xa0caef)
+  writeln(""" / ___ \  >  <| | (_) | | | | | | | |_| |___) |""", 0xa0caef)
+  writeln("""/_/   \_\/_/\_\_|\___/|_| |_| |_|  \___/|____/ """, 0xa0caef)
+  writeln("")
+  writeln("Welcome to AxiomOS")
+  writeln("")
 
   #############################################
-  ##  Bring the rest of the kernel up
-
-  debugln("boot: Initializing scheduler")
-  sched.init()
-
-  # let t1 = createThread(shell.start)
-
-  #############################################
-  ##  Exit UEFI Boot Services
-
-  # let status = sysTable.bootServices.exitBootServices(imageHandle, memoryMapKey)
-
-  #############################################
-  ##  Start idle thread
+  ##  Start scheduler
 
   debugln("boot: Creating idle thread")
   var idleThread = createThread(idle, ThreadPriority.low, "idle")
 
-  debugln("boot: Initializing shell")
+  debugln("boot: Creating shell thread")
   shell.init(sysTable)
   createThread(shell.start, name = "shell").start()
 
-  debugln("boot: Done; begin idle thread")
-  become(idleThread)
+  debugln("boot: Done; starting idle thread")
+  # this should be the last thing we do; this call does not return
+  sched.init(idleThread)

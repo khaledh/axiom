@@ -2,6 +2,7 @@ import std/strformat
 
 import ports
 import ../idt
+import ../ioapic
 import ../lapic
 import ../../kernel/debug
 
@@ -133,4 +134,6 @@ proc kbdInterruptHandler*(intFrame: pointer)
 proc init*(handler: KeyEventHandler) =
   handleKeyEvent = handler
   debugln("keyboard: Setting keyboard interrupt handler (0x21)")
-  setInterruptHandler(0x21, kbdInterruptHandler)
+  idt.setInterruptHandler(0x21, kbdInterruptHandler)
+  # set keyboard interrupt: interrupt input 1 => vector 21h
+  ioapic0.setRedirEntry(irq = 1, vector = 0x21)

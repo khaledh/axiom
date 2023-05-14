@@ -1,7 +1,7 @@
 import std/strformat
 import std/heapqueue
 
-import ../sched
+import ../sched {.all.}
 import ../threaddef
 import ../devices/console
 
@@ -29,5 +29,5 @@ proc showThreads*() =
   if sleepingQueue.len > 0:
     writeln("Sleeping:")
     for i in 0 ..< sleepingQueue.len:
-      showThread(sleepingQueue[i])
+      showThread(sleepingQueue[i].thread)
       writeln(&"    sleep until: {sleepingQueue[i].sleepUntil}")

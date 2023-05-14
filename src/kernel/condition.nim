@@ -17,7 +17,7 @@ proc wait*(cv: ConditionVar) =
   cv.lock.acquire
   cv.waiters.addLast(getCurrentThread())
   cv.lock.release
-  sleep()
+  wait()
 
 proc signal*(cv: ConditionVar) =
   cv.lock.acquire

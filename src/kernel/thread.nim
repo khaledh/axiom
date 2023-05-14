@@ -1,27 +1,21 @@
 import std/strformat
 
+import debug
 import devices/cpu
 import sched
 import threaddef
-import ../kernel/debug
 
 var
-  nextAvailableId: uint64 = 0
+  nextId: uint64 = 0
 
 proc kernelThread(function: ThreadFunc) =
   function()
-
   disableInterrupts()
-
-  if getCurrentThread().next == getCurrentThread():
-    debugln("Halt")
-    halt()
-
   schedule(tsTerminated)
 
 proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0, name: string = ""): Thread =
-  let id = nextAvailableId
-  inc nextAvailableId
+  let id = nextId
+  inc nextId
 
   debugln(&"thread: creating new thread: id={id}, name='{name}', pri={priority}")
 
@@ -30,8 +24,6 @@ proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0, name: str
   thNew.name = name
   thNew.state = tsNew
   thNew.priority = priority
-  thNew.prev = nil
-  thNew.next = nil
 
   thNew.stack = new(ThreadStack)
   thNew.rsp = cast[uint64](thNew.stack) + sizeof(ThreadStackArray).uint64 - sizeof(SwitchStack).uint64 - 128

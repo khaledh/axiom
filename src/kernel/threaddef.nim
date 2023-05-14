@@ -21,11 +21,12 @@ type
     rsp*: uint64
     id*: uint64
     name*: string
-    prev*: Thread
-    next*: Thread
     stack*: ThreadStack
     priority*: ThreadPriority
     state*: ThreadState
+
+  SleepingThread* = ref object
+    thread*: Thread
     sleepUntil*: uint64
 
   ThreadFunc* = proc () {.cdecl.}
@@ -51,6 +52,8 @@ type
 # we want heap[0] to contian the thread with highest priority
 # so we invert the inequality here
 proc `<`*(a, b: Thread): bool = a.priority > b.priority
+
+proc `<`*(a, b: SleepingThread): bool = a.sleepUntil < b.sleepUntil
 
 proc `$`*(t: Thread): string =
   result = &"Thread({t.id}, '{t.name}', pri={t.priority}, state={t.state})"
