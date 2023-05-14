@@ -22,12 +22,12 @@ proc wait*(cv: ConditionVar) =
 proc signal*(cv: ConditionVar) =
   cv.lock.acquire
   if cv.waiters.len > 0:
-    let t = cv.waiters.popFirst
-    wakeup(t)
+    let th = cv.waiters.popFirst
+    signal(th)
   cv.lock.release
 
 proc broadcast*(cv: ConditionVar) =
   cv.lock.acquire
   while cv.waiters.len > 0:
-    wakeup(cv.waiters.popFirst)
+    signal(cv.waiters.popFirst)
   cv.lock.release

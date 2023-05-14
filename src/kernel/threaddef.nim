@@ -13,6 +13,7 @@ type
     tsRunning
     tsBlocked
     tsSleeping
+    tsWaiting
     tsTerminated
 
   ThreadPriority* = -7..8

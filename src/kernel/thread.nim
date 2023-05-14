@@ -11,7 +11,7 @@ var
 proc kernelThread(function: ThreadFunc) =
   function()
   disableInterrupts()
-  schedule(tsTerminated)
+  terminate()
 
 proc createThread*(function: ThreadFunc, priority: ThreadPriority = 0, name: string = ""): Thread =
   let id = nextId
