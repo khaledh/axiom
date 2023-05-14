@@ -1,8 +1,10 @@
 import std/[heapqueue, strformat, strutils]
+import fusion/matching
+{.experimental: "caseStmtMacros".}
 
+import debug
 import threaddef
 import timer
-import ../kernel/debug
 
 
 var
@@ -86,16 +88,78 @@ proc removeFromQueue(th: Thread, queue: var HeapQueue) =
   if idx >= 0:
     queue.del(idx)
 
-proc removeFromQueue(th: Thread, queue: var HeapQueue[SleepingThread]): SleepingThread =
+proc removeFromQueue(th: Thread, queue: var HeapQueue[SleepingThread]) =
   for i in 0 ..< queue.len:
     let sleeper = queue[i]
     if sleeper.thread.id == th.id:
       queue.del(i)
-      return sleeper
+      return
+
+####################################################################################################
+# Thread state machine transitions
+
+type
+  TransitionEvent = object
+    case toState: ThreadState
+    of tsSleeping:
+      sleepUntil: uint64
+    else: discard
+
+proc transitionTo*(th: Thread, event: TransitionEvent): bool =
+  if th.state == event.toState:
+    return false
+
+  case (th.state, event.toState):
+  of (tsNew, tsReady):
+    readyQueue.push(th)
+
+  of (tsRunning, tsReady):
+    readyQueue.push(th)
+
+  of (tsBlocked, tsReady):
+    removeFromQueue(th, blockedQueue)
+    readyQueue.push(th)
+
+  of (tsSleeping, tsReady):
+    removeFromQueue(th, sleepingQueue)
+    readyQueue.push(th)
+
+  of (tsWaiting, tsReady):
+    removeFromQueue(th, waitingQueue)
+    readyQueue.push(th)
+
+  of (tsReady, tsRunning):
+    removeFromQueue(th, readyQueue)
+    currentThread = th
+
+  of (tsRunning, tsBlocked):
+    blockedQueue.push(th)
+
+  of (tsRunning, tsSleeping):
+    let sleeper = SleepingThread(thread: th, sleepUntil: event.sleepUntil)
+    sleepingQueue.push(sleeper)
+
+  of (tsRunning, tsWaiting):
+    waitingQueue.push(th)
+
+  of (_, tsTerminated):
+    case th.state:
+    of tsReady: removeFromQueue(th, readyQueue)
+    of tsBlocked: removeFromQueue(th, blockedQueue)
+    of tsSleeping: removeFromQueue(th, sleepingQueue)
+    of tsWaiting: removeFromQueue(th, waitingQueue)
+    else: discard
+
+  else:
+    debugln(&"threaddef.transitionTo: invalid transition from {th.state} to {event.toState}")
+    return false
+
+  th.state = event.toState
+  return true
 
 
 ####################################################################################################
-# Scheduler main routine
+# Main scheduler routine
 
 proc wakeup*(th: Thread)  # forward declaration
 
@@ -117,8 +181,7 @@ proc schedule*() {.cdecl.} =
     if thNext.priority >= currentThread.priority or currentThread.state notin {tsReady, tsRunning}:
       # switch to new thread
       if currentThread.state == tsRunning:
-        currentThread.state = tsReady
-        readyQueue.push(currentThread)
+        discard transitionTo(currentThread, TransitionEvent(toState: tsReady))
       thNext.state = tsRunning
       var thTemp = currentThread
       currentThread = thNext
@@ -129,67 +192,50 @@ proc schedule*() {.cdecl.} =
       readyQueue.push(thNext)
 
 
-
 ####################################################################################################
 # API for managing current thread
 
 proc sleep*(ticks: uint64) =
   if ticks == 0:
     return
-  currentThread.state = tsSleeping
-  var sleeper = SleepingThread(
-    thread: currentThread,
-    sleepUntil: getTimerTicks() + ticks
-  )
-  sleepingQueue.push(sleeper)
-  debugln(&"sched.sleep: id={sleeper.thread.id}, name={sleeper.thread.name}, until={sleeper.sleepUntil}")
-  schedule()
+  let sleepUntil = getTimerTicks() + ticks
+  if transitionTo(currentThread, TransitionEvent(toState: tsSleeping, sleepUntil: sleepUntil)):
+    debugln(&"sched.sleep: id={currentThread.id}, name={currentThread.name}, until={sleepUntil}")
+    schedule()
 
 proc wait*() =
-  debugln(&"sched.wait: id={currentThread.id}, name={currentThread.name}")
-  currentThread.state = tsWaiting
-  waitingQueue.push(currentThread)
-  schedule()
+  if transitionTo(currentThread, TransitionEvent(toState: tsWaiting)):
+    debugln(&"sched.wait: id={currentThread.id}, name={currentThread.name}")
+    schedule()
 
 # proc join*(th: Thread) =
 #   while th.state != tsTerminated:
 #     th.finished.wait()
 
 proc terminate*() =
-  debugln(&"sched.stop: terminating thread id={currentThread.id}, name={currentThread.name}")
-  currentThread.state = tsTerminated
-  schedule()
+  if transitionTo(currentThread, TransitionEvent(toState: tsTerminated)):
+    debugln(&"sched.terminate: id={currentThread.id}, name={currentThread.name}")
+    schedule()
 
 
 ####################################################################################################
 # API for managing other threads
 
-proc start*(thread: Thread) =
-  debugln(&"sched.start: id={thread.id}, name={thread.name}")
-  thread.state = tsReady
-  readyQueue.push(thread)
+proc start*(th: Thread) =
+  if transitionTo(th, TransitionEvent(toState: tsReady)):
+    debugln(&"sched.start: {th.id=}, name={th.name=}")
 
 proc wakeup*(th: Thread) =
-  if th.state == tsSleeping:
-    debugln("sched.wakeup: th=", $th.id, ", removing from sleepingQueue")
-    discard removeFromQueue(th, sleepingQueue)
-    debugln("sched.wakeup: th=", $th.id, ", sleepingQueue.len=", $sleepingQueue.len)
-    th.state = tsReady
-    debugln("sched.wakeup: th=", $th.id, ", adding to readyQueue")
-    readyQueue.push(th)
+  if transitionTo(th, TransitionEvent(toState: tsReady)):
+    debugln(&"sched.wakeup: {th.id=}, {th.name=}")
 
 proc signal*(th: Thread) =
-  debugln(&"sched.signal: id={th.id}, name={th.name}")
-  removeFromQueue(th, waitingQueue)
-  th.state = tsReady
-  readyQueue.push(th)
+  if transitionTo(th, TransitionEvent(toState: tsReady)):
+    debugln(&"sched.signal: {th.id=}, {th.name=}")
 
 proc stop*(th: Thread) =
-  debugln(&"sched.stop: terminating thread id={th.id}, name={th.name}")
-  removeFromQueue(th, readyQueue)
-  removeFromQueue(th, blockedQueue)
-  discard removeFromQueue(th, sleepingQueue)
-  th.state = tsTerminated
+  if transitionTo(th, TransitionEvent(toState: tsTerminated)):
+    debugln(&"sched.stop: {th.id=}, {th.name=}")
 
 
 ####################################################################################################
