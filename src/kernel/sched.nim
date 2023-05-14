@@ -100,25 +100,22 @@ proc removeFromQueue(th: Thread, queue: var HeapQueue[SleepingThread]): Sleeping
 proc wakeup*(th: Thread)  # forward declaration
 
 proc schedule*() {.cdecl.} =
-
+  # wake up sleeping threads that have their sleep time elapsed
   if sleepingQueue.len > 0:
-    while sleepingQueue.len > 0 and sleepingQueue[0].sleepUntil > 0 and sleepingQueue[0].sleepUntil <= getTimerTicks():
+    # the queue is ordered by sleepUntil, so we can stop at the first thread that is not due yet
+    while sleepingQueue.len > 0 and sleepingQueue[0].sleepUntil <= getTimerTicks():
       var sleeper = sleepingQueue.pop()
       wakeup(sleeper.thread)
 
   # get highest priority thread
   if readyQueue.len > 0:
-    debugln(&"sched.schedule: readyQueue.len={readyQueue.len}")
-    var thNext = readyQueue[0]
-    debugln(&"sched.schedule: {currentThread.id=}, {currentThread.name=}, {currentThread.priority=}, {currentThread.state=}")
-    debugln(&"sched.schedule: {thNext.id=}, {thNext.name=}, {thNext.priority=}, {thNext.state=}")
+    var thNext = readyQueue.pop()
 
     if currentThread.state == tsTerminated:
-      readyQueue.del(0)
       become(thNext)
 
     if thNext.priority >= currentThread.priority or currentThread.state notin {tsReady, tsRunning}:
-      readyQueue.del(0)
+      # switch to new thread
       if currentThread.state == tsRunning:
         currentThread.state = tsReady
         readyQueue.push(currentThread)
@@ -127,14 +124,18 @@ proc schedule*() {.cdecl.} =
       currentThread = thNext
       debugln(&"sched.schedule: switching from id={thTemp.id}, name={thTemp.name} to id={thNext.id}, name={thNext.name}")
       switchToThread(thTemp, thNext)
-    
-    currentThread.state = tsRunning
+    else:
+      # no switch, put thread back into ready queue
+      readyQueue.push(thNext)
+
 
 
 ####################################################################################################
 # API for managing current thread
 
 proc sleep*(ticks: uint64) =
+  if ticks == 0:
+    return
   currentThread.state = tsSleeping
   var sleeper = SleepingThread(
     thread: currentThread,
