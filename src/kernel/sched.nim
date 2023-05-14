@@ -85,6 +85,9 @@ proc removeFromQueue(th: Thread, queue: var HeapQueue[SleepingThread]): Sleeping
       queue.del(i)
       return sleeper
 
+# forward declaration
+proc wakeup*(th: Thread)
+
 proc schedule*(newState: ThreadState) {.cdecl.} =
   currentThread.state = newState
 
@@ -97,19 +100,11 @@ proc schedule*(newState: ThreadState) {.cdecl.} =
   #   sleepingQueue.push(currentThread)
   else: discard
 
-  var toWakeUp: seq[SleepingThread]
-  for i in 0 ..< sleepingQueue.len:
-    let thSleeping = sleepingQueue[i]
-    if thSleeping.sleepUntil > 0 and thSleeping.sleepUntil <= getTimerTicks():
-      toWakeUp.add(thSleeping)
-
-  for th in toWakeUp:
-    var thread = th.thread
-    debugln(&"sched.schedule: th={thread.id}, name={thread.name}, wait expired")
-    th.sleepUntil = 0
-    thread.state = tsReady
-    discard removeFromQueue(thread, sleepingQueue)
-    readyQueue.push(thread)
+  if sleepingQueue.len > 0:
+    let nextTick = sleepingQueue[0].sleepUntil
+    while nextTick > 0 and nextTick <= getTimerTicks():
+      var sleeper = sleepingQueue.pop()
+      wakeup(sleeper.thread)
 
   # get highest priority thread
   if readyQueue.len > 0:
