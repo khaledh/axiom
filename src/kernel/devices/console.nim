@@ -4,6 +4,7 @@ import std/strformat
 import ../queues
 import ../thread
 import ../timer
+import ../devices/rtc
 import ../../kernel/debug
 import ../../graphics/font
 import ../../graphics/framebuffer
@@ -145,7 +146,8 @@ proc writeln*(str: string, fgColor = conOut.fgColor, bgColor = conOut.bgColor) =
 
 proc onTimer() {.cdecl.} =
   if timerTicks mod 10 == 0:
-    putTextAt(&"{getCurrentThread().name:>11}", 62, 145)
+    putTextAt(&"{getCurrentThread().name:12}", 62, 0)
+    putTextAt($getDateTime(), 62, 135)
     flush()
 
 

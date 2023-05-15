@@ -23,6 +23,7 @@ import kernel/acpi/[fadt, rsdp]
 import kernel/devices/console
 import kernel/devices/cpu
 import kernel/devices/keyboard
+import kernel/devices/rtc
 import kernel/inspect/[madt, xsdt]
 import kernel/inspect/ahci
 import kernel/inspect/cpu
@@ -56,12 +57,12 @@ proc spinner() {.cdecl.} =
   var index = 0
 
   while true:
-      putCharAt(spinner[index mod len(spinner)], 62, 157)
+      putCharAt(spinner[index mod len(spinner)], 0, 157)
       inc index
       sleep(50)
 
 proc clearSpinner() =
-  putCharAt(' ', 62, 157)
+  putCharAt(' ', 0, 157)
 
 proc dispatchCommand(cmd: string)
 
@@ -161,6 +162,7 @@ proc showHelp() {.cdecl.} =
   writeln("Other")
   writeln("  about         Information about Axiom OS")
   writeln("  ping          Respond with 'pong'")
+  writeln("  date          Show current date and time")
   writeln("  font          Show font information")
   writeln("  halt          Halt without shutting down")
   writeln("  shutdown      Shutdown the system")
@@ -282,6 +284,9 @@ proc dispatchCommand(cmd: string) =
       spinnerThread.stop()
       spinnerThread = nil
       clearSpinner()
+
+  of "date":
+    writeln($getDateTime())
 
   else:
     writeln("Unknown command")
