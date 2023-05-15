@@ -1,5 +1,7 @@
 import idt, lapic
 
+import debug
+
 type
   TimerCallback* = proc () {.cdecl.}
 
@@ -26,12 +28,14 @@ proc init*() =
   lapic.setTimer(0x20)
 
 
-proc registerTimerCallback*(callback: TimerCallback): int =
+proc registerTimerCallback*(callback: TimerCallback) =
   for i in 0 .. timerCallbacks.high:
     if isNil(timerCallbacks[i]):
       timerCallbacks[i] = callback
-      return i
-  return -1
+      return
+
+  debugln("sched: Failed to register timer callback")
+  quit(1)
 
 
 proc getTimerTicks*(): uint64 =

@@ -14,6 +14,8 @@
 ]#
 
 import std/[strformat, strutils]
+import std/sugar
+import std/tables
 
 import boot/[uefi, uefi/simpletext, uefi/firmware, uefitypes]
 import kernel/debug
@@ -33,10 +35,8 @@ import kernel/inspect/threads
 import kernel/gdt
 import kernel/paging
 import kernel/physmem
-import kernel/sched
 import kernel/system
 import kernel/thread
-import kernel/threaddef
 
 var
   sysTable: ptr EfiSystemTable
@@ -107,7 +107,7 @@ proc start*() {.cdecl.} =
     dispatchCommand(line)
     writeln("")
 
-proc showHelp() =
+proc showHelp() {.cdecl.} =
   writeln("")
   writeln("UEFI")
   writeln("  uefi fw       Show UEFI firmware version")
@@ -166,25 +166,28 @@ proc showHelp() =
   writeln("  shutdown      Shutdown the system")
   writeln("  bye           Alias to 'shutdown'")
 
-proc showAbout() =
+proc showAbout() {.cdecl.} =
   writeln("Axiom OS 0.1.0")
   writeln("Copyright (c) 2022-2023 Khaled Hammouda <khaledh@gmail.com>")
+
+let commands = {
+  "help": showHelp,
+  "about": showAbout,
+  "ping": () {.cdecl.} => writeln("pong")
+}.toTable
 
 proc dispatchCommand(cmd: string) =
   debugln(&"shell: dispatching command: {cmd}")
 
+  if commands.hasKey(cmd):
+    var th = createThread(commands[cmd], name=cmd)
+    th.start()
+    th.join()
+    return
+
   case cmd:
   of "":
     discard
-
-  of "help":
-    showHelp()
-
-  of "about":
-    showAbout()
-
-  of "ping":
-    writeln("pong")
 
   of "rsdp":
     showRsdp()

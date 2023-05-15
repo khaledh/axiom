@@ -5,7 +5,6 @@ import ioapic
 import lapic
 import sched
 import thread
-import threaddef
 import timer
 
 import devices/bga
@@ -104,6 +103,8 @@ proc init*(sysTable: ptr EfiSystemTable) =
 
   #############################################
   ##  Start scheduler
+
+  thread.init(sched.schedule, sched.transitionTo)
 
   debugln("boot: Creating idle thread")
   var idleThread = createThread(idle, ThreadPriority.low, "idle")

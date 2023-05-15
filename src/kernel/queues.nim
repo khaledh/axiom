@@ -1,6 +1,6 @@
-import condition
 import debug
 import lock
+import thread
 
 type
   BlockingQueue*[T] = ref object of RootObj

@@ -2,7 +2,7 @@ import bitops
 import std/strformat
 
 import ../queues
-import ../sched
+import ../thread
 import ../timer
 import ../../kernel/debug
 import ../../graphics/font

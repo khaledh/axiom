@@ -1,8 +1,9 @@
 import std/strformat
 import std/heapqueue
+import std/tables
 
 import ../sched {.all.}
-import ../threaddef
+import ../thread
 import ../devices/console
 
 
@@ -16,18 +17,18 @@ proc showThreads*() =
   writeln("Current:")
   showThread(getCurrentThread())
 
-  if readyQueue.len > 0:
+  if ready.len > 0:
     writeln("Ready:")
-    for i in 0 ..< readyQueue.len:
-      showThread(readyQueue[i])
+    for i in 0 ..< ready.len:
+      showThread(ready[i])
 
-  if blockedQueue.len > 0:
-    writeln("Blocked:")
-    for i in 0 ..< blockedQueue.len:
-      showThread(blockedQueue[i])
+  if waiting.len > 0:
+    writeln("Waiting:")
+    for waiter in waiting.values:
+      showThread(waiter.thread)
 
-  if sleepingQueue.len > 0:
+  if sleeping.len > 0:
     writeln("Sleeping:")
-    for i in 0 ..< sleepingQueue.len:
-      showThread(sleepingQueue[i].thread)
-      writeln(&"    sleep until: {sleepingQueue[i].sleepUntil}")
+    for i in 0 ..< sleeping.len:
+      showThread(sleeping[i].thread)
+      writeln(&"    sleep until: {sleeping[i].sleepUntil}")
