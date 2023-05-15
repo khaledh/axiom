@@ -154,6 +154,7 @@ proc showHelp() {.cdecl.} =
 
   writeln("")
   writeln("Shell")
+  writeln("  clear         Clear the screen")
   writeln("  busy          Simulate busy thread")
   writeln("  spinner on    Start the spinner thread")
   writeln("  spinner off   Stop the spinner thread")
@@ -259,6 +260,9 @@ proc dispatchCommand(cmd: string) =
 
   of "threads":
     showThreads()
+  
+  of "clear":
+    clear()
 
   of "busy":
     for i in 0 .. 500_000_000:

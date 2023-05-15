@@ -57,6 +57,15 @@ proc init*(fb: Framebuffer, left, top: int, font: Font, maxCols, maxRows: int,
                    currCol: currCol, currRow: currRow, bgColor: bgColor, fgColor: fgColor)
   timer.registerTimerCallback(onTimer)
 
+proc clear*(con: var Console) =
+  con.currCol = 0
+  con.currRow = 0
+  for i in 0 ..< 1024*1280:
+      backbuffer[i] = con.bgColor
+
+proc clear*() =
+  clear(conOut)
+
 proc flush*(con: Console) =
   con.fb.copyBuffer(cast [ptr UncheckedArray[uint32]](addr backbuffer), backbufferStart)
 
