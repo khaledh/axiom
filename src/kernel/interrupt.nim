@@ -1,8 +1,5 @@
-import std/strformat
-
 import devices/console
 import devices/cpu
-import debug
 import idt
 
 const
@@ -37,9 +34,6 @@ let
 
 {.push stackTrace:off.}
 proc handleInterrupt(intFrame: ptr InterruptFrame) {.cdecl, exportc.} =
-  # debugln(&"Interrupt frame dddress: {cast[uint64](intFrame):016x}")
-  debugln(&"Divide Error:\nInterrupt Frame:\n{intFrame}")
-
   if intFrame.vector < 22:
     putTextAt(exceptionMsg[intFrame.vector], 31, 79 - (intFrame.vector.int div 2), bgColor = DarkRed, fgColor = White)
     flush()
@@ -216,12 +210,7 @@ proc isr14*(intFrame: ptr InterruptFrame) {.asmNoStackFrame, cdecl.} =
     jmp     isrPrologue
   """
 
-proc isr15*(intFrame: ptr InterruptFrame) {.asmNoStackFrame, cdecl.} =
-  asm """
-    pushq   1  # error code
-    pushq   15  # interrupt vector
-    jmp     isrPrologue
-  """
+# no interrupt 15 (Intel reserved)
 
 proc isr16*(intFrame: ptr InterruptFrame) {.asmNoStackFrame, cdecl.} =
   asm """
@@ -279,7 +268,6 @@ proc init*() =
   setInterruptHandler(12, isr12)
   setInterruptHandler(13, isr13)
   setInterruptHandler(14, isr14)
-  setInterruptHandler(15, isr15)
   setInterruptHandler(16, isr16)
   setInterruptHandler(17, isr17)
   setInterruptHandler(18, isr18)
