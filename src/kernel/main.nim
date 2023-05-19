@@ -13,7 +13,8 @@ import devices/cpu
 import devices/keyboard
 import devices/pic
 
-import ../kernel/debug
+import debug
+import interrupt
 import ../graphics/font
 import ../graphics/framebuffer
 import ../lib/[libc, malloc]
@@ -71,11 +72,7 @@ proc init*(sysTable: ptr EfiSystemTable) =
   debugln("boot: Initializing IDT")
   idt.init()
 
-  # setInterruptHandler(0, isr00)
-  # asm """
-  #   mov rcx, 0
-  #   div rcx
-  # """
+  interrupt.init()
 
   #############################################
   ##  Setup keyboard

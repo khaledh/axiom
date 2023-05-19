@@ -10,7 +10,7 @@ var
   timerCallbacks: array[16, TimerCallback]
 
 
-proc timerInterruptHandler*(intFrame: pointer)
+proc timerInterruptHandler*(intFrame: ptr InterruptFrame)
     {.cdecl, codegenDecl: "__attribute__ ((interrupt)) $# $#$#".} =
 
   inc timerTicks

@@ -81,7 +81,7 @@ proc `$`*(evt: KeyEvent): string =
   if evt.alt: result.add(" alt")
 
 {.push stackTrace:off.}
-proc kbdInterruptHandler*(intFrame: pointer)
+proc kbdInterruptHandler*(intFrame: ptr InterruptFrame)
     {.cdecl, codegenDecl: "__attribute__ ((interrupt)) $# $#$#".}=
 
   var scanCode = portIn8(0x60)

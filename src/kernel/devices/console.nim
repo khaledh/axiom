@@ -19,6 +19,8 @@ const
   DarkerGreyBlue* = 0x252d35'u32
   Orange* = 0xf57956'u32
   DarkOrange* = 0xc46c00'u32
+  Red* = 0xff0000'u32
+  DarkRed* = 0x8b0000'u32
   Green* = 0x8ebb8a'u32
   LightBlue* = 0x90badf'u32
   LighterBlue* = 0xd4ebf2'u32

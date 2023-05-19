@@ -7,13 +7,6 @@ import ../idt {.all.}
 privateAccess(InterruptDescriptor)
 privateAccess(IdtDescriptor)
 
-proc setInterruptHandler*(vector: uint8, handler: proc (intFrame: pointer) {.cdecl.}) =
-  let intDesc = cast[ptr InterruptDescriptor](idtDesc.base + vector.uint64 * 16)
-  let handlerAddr = cast[uint64](handler)
-  intDesc.offset00 = uint16(handlerAddr and 0xffff'u64)
-  intDesc.offset16 = uint16(handlerAddr shr 16 and 0xffff'u64)
-  intDesc.offset32 = uint32(handlerAddr shr 32)
-
 proc showIdt*() =
   writeln("")
   writeln("IDT (Interrupt Descritpor Table)")
