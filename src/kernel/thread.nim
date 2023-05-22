@@ -126,7 +126,7 @@ proc sleep*(ticks: uint64) =
     return
   let sleepUntil = getTimerTicks() + ticks
   if transitionTo(currentThread, ThreadTransition(toState: tsSleeping, sleepUntil: sleepUntil)):
-    debugln(&"thread.sleep: id={currentThread.id}, name={currentThread.name}, until={sleepUntil}")
+    # debugln(&"thread.sleep: id={currentThread.id}, name={currentThread.name}, until={sleepUntil}")
     schedule()
 
 proc wait*() =

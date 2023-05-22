@@ -3,11 +3,10 @@ import std/strformat
 
 import ../queues
 import ../thread
-import ../timer
 import ../devices/rtc
+import ../../gui/view
 import ../../kernel/debug
 import ../../graphics/font
-import ../../graphics/framebuffer
 import keyboard
 
 
@@ -31,90 +30,106 @@ const
 
 type
   Console* = object
-    fb: Framebuffer
-    left: int
-    top: int
-    font: Font
+    view: View
+    charBuf: seq[seq[char]]
+    charBufStartRow: int
     maxCols: int
     maxRows: int
     currCol: int
     currRow: int
     bgColor: uint32
     fgColor: uint32
+    font: Font
 
 var
-  conOut*: Console
-  # circular buffer
-  backbuffer {.align(16).}: array[1024*1280, uint32]
-  backbufferStart: int
-
-proc onTimer() {.cdecl.}
-
-proc init*(fb: Framebuffer, left, top: int, font: Font, maxCols, maxRows: int,
-           currCol = 0, currRow = 0, fgColor = DefaultForeground, bgColor = DefaultBackground) =
-  backbufferStart = 0
-  for i in 0 ..< 1024*1280:
-      backbuffer[i] = bgColor
-  conOut = Console(fb: fb, left: left, top: top, font: font, maxCols: maxCols, maxRows: maxRows,
-                   currCol: currCol, currRow: currRow, bgColor: bgColor, fgColor: fgColor)
-  timer.registerTimerCallback(onTimer)
+  conOut*: Console  
 
 proc clear*(con: var Console) =
   con.currCol = 0
   con.currRow = 0
-  for i in 0 ..< 1024*1280:
-      backbuffer[i] = con.bgColor
+  con.view.clear()
 
 proc clear*() =
   clear(conOut)
 
 proc flush*(con: Console) =
-  con.fb.copyBuffer(cast [ptr UncheckedArray[uint32]](addr backbuffer), backbufferStart)
+  # con.fb.copyBuffer(cast [ptr UncheckedArray[uint32]](addr backbuffer), backbufferStart)
+  discard
 
 proc flush*() =
   flush(conOut)
 
-proc scrollUp(con: var Console) =
-  # move pointer down in the circular buffer to indicate the new start line
-  backbufferStart = (backbufferStart + 16) mod 1024
+proc conRowToBufRow(con: var Console, row: int): int {.inline.} =
+  return con.charBuf.len - con.maxRows + row
 
-  # clear the last line
-  var start = ((backbufferStart + 1024) mod 1024) * 1280
-  for i in start ..< start + 16*1280:
-      backbuffer[i] = con.bgColor
+proc putCharAt*(con: var Console, ch: char, row, col: int, fgColor = con.fgColor, bgColor = con.bgColor) =
+  # debugln("[console] putCharAt: ", $ch, " at ", $row, ", ", $col)
+  let bufRow = conRowToBufRow(con, row)
+  con.charBuf[bufRow][col] = ch
 
-  dec(con.currRow)
-  # flush(con)
-
-proc putCharAt*(con: Console, ch: char, row, col: int, fgColor = con.fgColor, bgColor = con.bgColor) =
-  var xpos = con.left + col * con.font.width
-  var ypos = con.top + row * con.font.height
+  var xstart = col.uint32 * con.font.width.uint32
+  var ystart = row.uint32 * con.font.height.uint32
 
   # bitblt the glyph
   let glyph = con.font.glyphs[ch.uint8]
-  for yoff, row in glyph:
+  for yoff, rowBits in glyph:
     for xoff in 1..8:
-      let clr = if (rotateLeftBits(row, xoff) and 1) == 1: fgColor else: bgColor
-      backbuffer[(((backbufferStart + ypos + yoff) mod 1024) * 1280) + xpos + xoff - 1] = clr
-
-  # flush(con)
+      let clr = if (rotateLeftBits(rowBits, xoff) and 1) == 1: fgColor else: bgColor
+      con.view[xstart + xoff.uint32, ystart + yoff.uint32] = clr
 
 proc putCharAt*(ch: char, row, col: int, fgColor = conOut.fgColor, bgColor = conOut.bgColor) =
   conOut.putCharAt(ch, row, col, fgColor, bgColor)
 
-proc putChar*(con: Console, ch: char, fgColor = con.fgColor, bgColor = con.bgColor) =
+proc putChar*(con: var Console, ch: char, fgColor = con.fgColor, bgColor = con.bgColor) =
   putCharAt(con, ch, con.currRow, con.currCol, fgColor, bgColor)
 
 proc putChar*(ch: char, fgColor = conOut.fgColor, bgColor = conOut.bgColor) =
   putCharAt(conOut, ch, conOut.currRow, conOut.currCol, fgColor, bgColor)
 
+proc clearRow(row: int) =
+  for i in 0 ..< conOut.maxCols:
+    putCharAt(conOut, ' ', row, i)
+
+proc dumpCharBuf(con: Console) =
+  debugln("charBuff")
+  for i in 0 ..< con.charBuf.len:
+    if i < 10:
+      debug(" ")
+    debug($i, ": ")
+    for j in 0 ..< con.charBuf[i].len:
+      if con.charBuf[i][j] == '\0':
+        debug(" ")
+      else:
+        debug($con.charBuf[i][j])
+    debugln("|")
+
+proc scrollUp(con: var Console) =
+  # dumpCharBuf(con)
+  con.charBuf.add(newSeq[char](con.maxCols))
+
+  con.view.scrollUp(con.font.height.uint32)
+  # re-render the visible viewport
+  # for bufRow in (con.charBuf.len - con.maxRows) ..< con.charBuf.len:
+  #   let conRow = bufRow - (con.charBuf.len - con.maxRows)
+  #   for c in 0 ..< con.maxCols:
+  #     var ch = con.charBuf[bufRow][c]
+  #     if con.charBuf[bufRow][c] == '\0':
+  #       ch = ' '
+  #     # debugln("[console] scrolling: putCharAt: ", $ch, " at ", $conRow, ", ", $c)
+  #     putCharAt(con, ch, conRow, c)
+
+  # dumpCharBuf(con)
+
+  # var start = ((backbufferStart + con.view.width.int) mod con.view.height.int) * con.view.width.int
+  # for i in start ..< start + 16*con.view.width.int:
+  #     backbuffer[i] = con.bgColor
+
 proc newLine(con: var Console) =
   con.currCol = 0
-  inc(con.currRow)
+  inc con.currRow
   if con.currRow >= con.maxRows:
+    dec con.currRow
     con.scrollUp()
-
-  # flush(con)
 
 proc putTextAt*(con: var Console, str: string, row, col: int, fgColor = con.fgColor, bgColor = con.bgColor) =
   for i, ch in str:
@@ -125,6 +140,7 @@ proc putTextAt*(str: string, row, col: int, fgColor = conOut.fgColor, bgColor = 
     putCharAt(conOut, ch, row, col + i, fgColor, bgColor)
 
 proc write*(con: var Console, str: string, fgColor = con.fgColor, bgColor = con.bgColor) =
+  # debugln("[console] writing: ", str)
   for i, ch in str:
     if ch == '\n':
       # clear cursor
@@ -149,17 +165,30 @@ proc write*(str: string, fgColor = conOut.fgColor, bgColor = conOut.bgColor) =
 
 proc writeln*(con: var Console, str: string, fgColor = con.fgColor, bgColor = con.bgColor) =
   write(con, str & "\n", fgColor, bgColor)
-  # flush(con)
 
 proc writeln*(str: string, fgColor = conOut.fgColor, bgColor = conOut.bgColor) =
   writeln(conOut, str, fgColor, bgColor)
 
 
-proc onTimer() {.cdecl.} =
-  if timerTicks mod 10 == 0:
-    putTextAt(&"{getCurrentThread().name:12}", 62, 0)
-    putTextAt($getDateTime(), 62, 135)
-    flush()
+proc init*(maxCols, maxRows: int, font: Font,
+           fgColor = DefaultForeground, bgColor = DefaultBackground) =
+  debugln(&"[console]: Initializing with {maxCols=}, {maxRows=}")
+  let viewWidth = maxCols * font.width
+  let viewHeight = maxRows * font.height
+  var mainView = createMainView("Console", 300.uint32, 100.uint32, viewWidth.uint32, viewHeight.uint32 + TitleHeight, bgColor)
+  var charBuf = newSeq[seq[char]](maxRows)
+  for i in 0 ..< maxRows:
+    charBuf[i] = newSeq[char](maxCols)
+  conOut = Console(view: mainView.view, maxCols: maxCols, maxRows: maxRows, charBuf: charBuf, font: font,
+                   bgColor: bgColor, fgColor: fgColor)
+  conOut.clear()
+
+
+
+proc onTimer*() =
+  putTextAt(&"{getCurrentThread().name:12}", 62, 0)
+  putTextAt($getDateTime(), 62, 135)
+  flush()
 
 
 proc showFont*() =

@@ -110,7 +110,7 @@ proc schedule*() {.cdecl.} =
       thNext.state = tsRunning
       var thTemp = currentThread
       currentThread = thNext
-      debugln(&"sched.schedule: switching from id={thTemp.id}, name={thTemp.name} to id={thNext.id}, name={thNext.name}")
+      # debugln(&"sched.schedule: switching from id={thTemp.id}, name={thTemp.name} to id={thNext.id}, name={thNext.name}")
       switchToThread(thTemp, thNext)
     else:
       # no switch, put thread back into ready queue

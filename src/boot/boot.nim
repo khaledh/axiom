@@ -6,10 +6,11 @@ import ../lib/[libc, malloc]
 
 
 proc printError(msg: string) {.gcsafe.} =
-  writeln("Unhandled Exception")
+  debugln("printError: ", msg)
   writeln(msg)
 
 proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =
+  debugln("Unhandled Exception: ", e.msg)
   printError(e.msg)
 
 errorMessageWriter = printError

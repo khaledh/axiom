@@ -62,15 +62,17 @@ proc bgaSetVideoMode*(width, height, bpp: uint16) =
   bgaWriteRegister(BgaPortIndexBpp, bpp)
   bgaWriteRegister(BgaPortIndexEnable, BgaEnabled or BgaLfbEnabled)
 
-proc bgaSwapBuffers*() =
-  bgaWriteRegister(BgaPortIndexYOffset, 1024)
+proc bgaSetYOffset*(offset: uint16) =
+  bgaWriteRegister(BgaPortIndexYOffset, offset)
 
-proc init*() =
+proc init*(xres, yres: uint16) =
+  debugln(&"[bga] Initializing Bochs Graphics Adapter")
   let bgaId = bgaReadRegister(BgaPortIndexId)
-  println(&"BGA ID = {bgaId:0>4x}")
+  debugln(&"[bga] ID = {bgaId:0>4x}")
 
-  bgaSetVideoMode(1280, 1024, 32)
+  debugln(&"[bga] Setting video mode to {xres}x{yres}")
+  bgaSetVideoMode(xres, yres, 32)
 
   let virtWidth = bgaReadRegister(BgaPortIndexVirtWidth)
   let virtHeight = bgaReadRegister(BgaPortIndexVirtHeight)
-  println(&"BGA VirtualRes = {virtWidth}x{virtHeight}")
+  debugln(&"[bga] VirtualRes = {virtWidth}x{virtHeight}")
