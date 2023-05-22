@@ -27,6 +27,7 @@ import kernel/devices/rtc
 import kernel/inspect/[madt, xsdt]
 import kernel/inspect/ahci
 import kernel/inspect/cpu
+import kernel/inspect/gui
 import kernel/inspect/idt
 import kernel/inspect/ioapic
 import kernel/inspect/lapic
