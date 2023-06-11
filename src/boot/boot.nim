@@ -7,7 +7,7 @@ import ../lib/[libc, malloc]
 
 proc printError(msg: string) {.gcsafe.} =
   debugln("printError: ", msg)
-  writeln(msg)
+  # writeln(msg)
 
 proc handleUnhandledException(e: ref Exception) {.tags: [], raises: [].} =
   debugln("Unhandled Exception: ", e.msg)

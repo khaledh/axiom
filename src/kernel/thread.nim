@@ -10,7 +10,7 @@ import timer
 {.experimental: "codeReordering".}
 
 const
-  StackSize = 512
+  StackSize = 4096
 
 type
   ThreadStackArray* = array[StackSize, uint64]

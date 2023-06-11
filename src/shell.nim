@@ -106,8 +106,10 @@ proc start*() {.cdecl.} =
     write("] ")
     let line = readLine()
     writeln("")
+    conOut.startPager()
     dispatchCommand(line)
     writeln("")
+    conOut.stopPager()
 
 proc showHelp() {.cdecl.} =
   writeln("")

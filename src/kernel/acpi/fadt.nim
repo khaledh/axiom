@@ -1,12 +1,12 @@
-import std/options
-import std/strformat
-
-import table, xsdt
-import ../devices/console
-
 #[
   Fixed ACPI Description Table
 ]#
+import std/options
+import std/strformat
+
+import table, xsdt, aml, amltree
+import ../devices/console
+
 
 type
   Fadt* {.packed.} = object
@@ -97,6 +97,10 @@ type
     GenericSerialBus
     Pcc  # Platform Communications Channel
 
+  Dsdt* {.packed.} = object
+    hdr: TableDescriptionHeader
+    aml: UncheckedArray[uint8]
+
 var
   fadt0*: ptr Fadt
 
@@ -125,7 +129,7 @@ proc showFadt*() =
     writeln(&"  Revision:             {fadt0.hdr.revision: >8}")
 
     writeln(&"  FIRMWARE_CTRL (FACS): {fadt0.firmwareCtrl:0>8x}h")
-    writeln(&"  DSDT:                 {fadt0.dsdt:0>8x}h")
+    writeln(&"  DSDT:                 {fadt0.xDsdt:0>16x}h")
     writeln(&"  Preferred PM Profile: {fadt0.preferred_pm_profile: >8}")
     writeln(&"  SCI_INT:              {fadt0.sciInt: >8}")
     writeln(&"  SMI_CMD:              {fadt0.smiCmd:>8x}h")
@@ -184,3 +188,16 @@ proc showFadt*() =
 
     if fadt0.hdr.revision >= 6:
       writeln(&"  Hypervisor Vendor Identity: {fadt0.hypervisorVendorIdentity: >16x}h")
+
+
+    let dsdt = cast[ptr Dsdt](fadt0.xDsdt)
+    writeln(&"  DSDT:                 {cast[uint64](dsdt):0>8x}h")
+    writeln(&"  DSDT Signature:       {dsdt.hdr.signature}")
+    writeln(&"  DSDT Length:          {dsdt.hdr.length: >8}")
+    writeln(&"  DSDT Revision:        {dsdt.hdr.revision: >8}")
+    writeln(&"  AML address:          {cast[uint64](addr dsdt.aml):0>8x}h")
+
+    var p = Parser()
+    let termList = p.parse(addr dsdt.aml, dsdt.hdr.length.int - sizeof(TableDescriptionHeader))
+    writeln("")
+    print(termList)

@@ -40,6 +40,7 @@ type
     bgColor: uint32
     fgColor: uint32
     font: Font
+    pagerLine = -1
 
 var
   conOut*: Console  
@@ -124,7 +125,22 @@ proc scrollUp(con: var Console) =
   # for i in start ..< start + 16*con.view.width.int:
   #     backbuffer[i] = con.bgColor
 
+proc readKeyEvent*(): KeyEvent
+
+proc startPager*(con: var Console) =
+  con.pagerLine = 0
+
+proc stopPager*(con: var Console) =
+  con.pagerLine = -1
+
 proc newLine(con: var Console) =
+  # if con.pagerLine >= 0:
+  #   inc con.pagerLine
+  #   if con.pagerLine >= con.maxRows:
+  #     con.pagerLine = 0
+  #     discard readKeyEvent()
+  #     discard readKeyEvent()
+
   con.currCol = 0
   inc con.currRow
   if con.currRow >= con.maxRows:
@@ -140,7 +156,7 @@ proc putTextAt*(str: string, row, col: int, fgColor = conOut.fgColor, bgColor = 
     putCharAt(conOut, ch, row, col + i, fgColor, bgColor)
 
 proc write*(con: var Console, str: string, fgColor = con.fgColor, bgColor = con.bgColor) =
-  # debugln("[console] writing: ", str)
+  debug(str)
   for i, ch in str:
     if ch == '\n':
       # clear cursor
