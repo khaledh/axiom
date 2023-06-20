@@ -201,3 +201,11 @@ proc showFadt*() =
     let termList = p.parse(addr dsdt.aml, dsdt.hdr.length.int - sizeof(TableDescriptionHeader))
     writeln("")
     print(termList)
+
+    # proc dumpHex(bytes: ptr UncheckedArray[uint8], len: int) =
+    #   for i in 0 ..< len:
+    #     if i mod 16 == 0:
+    #       writeln("")
+    #     write(&"{bytes[i]:0>2x} ")
+
+    # dumpHex(addr dsdt.aml, dsdt.hdr.length.int - sizeof(TableDescriptionHeader))

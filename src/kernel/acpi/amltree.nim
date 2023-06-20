@@ -20,6 +20,7 @@ privateAccess(NamedObj)
 privateAccess(DefCreateDWordField)
 privateAccess(DefField)
 privateAccess(DefDevice)
+privateAccess(DefMutex)
 privateAccess(DefOpRegion)
 
 privateAccess(DataObject)
@@ -34,6 +35,8 @@ privateAccess(DefMethod)
 privateAccess(MethodFlags)
 
 privateAccess(ExpressionOpcode)
+privateAccess(DefAcquire)
+privateAccess(DefAnd)
 privateAccess(DefBuffer)
 privateAccess(DefToHexString)
 privateAccess(DefToBuffer)
@@ -42,12 +45,24 @@ privateAccess(DefSizeOf)
 privateAccess(DefStore)
 privateAccess(DefLEqual)
 privateAccess(DefLLess)
+privateAccess(DefLNot)
+privateAccess(DefLOr)
+privateAccess(DefOr)
 privateAccess(DefIndex)
 privateAccess(DefDerefOf)
 privateAccess(DefIncrement)
+privateAccess(DefShiftLeft)
+privateAccess(MethodInvocation)
+
+privateAccess(ResourceDescriptor)
+privateAccess(AddressSpaceFlags)
+privateAccess(MemorySpecificFlags)
+privateAccess(DWordAddrSpaceDesc)
 
 privateAccess(StatementOpcode)
 privateAccess(DefIfElse)
+privateAccess(DefRelease)
+privateAccess(DefReturn)
 privateAccess(DefWhile)
 
 privateAccess(NameString)
@@ -70,6 +85,7 @@ proc visit(namedObj: NamedObj)
 proc visit(defCreateDWordField: DefCreateDWordField)
 proc visit(defField: DefField)
 proc visit(defDevice: DefDevice)
+proc visit(defMutex: DefMutex)
 proc visit(defOpRegion: DefOpRegion)
 proc visit(fieldElement: FieldElement)
 proc visit(dataObject: DataObject)
@@ -78,6 +94,8 @@ proc visit(constObj: ConstObj)
 proc visit(defMethod: DefMethod)
 
 proc visit(expr: ExpressionOpcode)
+proc visit(defAcquire: DefAcquire)
+proc visit(defAnd: DefAnd)
 proc visit(defBuffer: DefBuffer)
 proc visit(defToHexString: DefToHexString)
 proc visit(defToBuffer: DefToBuffer)
@@ -86,12 +104,23 @@ proc visit(defSizeOf: DefSizeOf)
 proc visit(defStore: DefStore)
 proc visit(defLEqual: DefLEqual)
 proc visit(defLLess: DefLLess)
+proc visit(defLNot: DefLNot)
+proc visit(defLOr: DefLOr)
+proc visit(defOr: DefOr)
 proc visit(defIndex: DefIndex)
 proc visit(defDerefOf: DefDerefOf)
 proc visit(defIncrement: DefIncrement)
+proc visit(defShiftLeft: DefShiftLeft)
+proc visit(methodInvocation: MethodInvocation)
+
+proc visit(resourceDesc: ResourceDescriptor)
+proc visit(dwordAddrSpace: DWordAddrSpaceDesc)
+
 
 proc visit(stmt: StatementOpcode)
 proc visit(defIfElse: DefIfElse)
+proc visit(defRelease: DefRelease)
+proc visit(defReturn: DefReturn)
 proc visit(defWhile: DefWhile)
 
 proc visit(argObj: ArgObj)
@@ -169,6 +198,8 @@ proc visit(namedObj: NamedObj) =
     visit(namedObj.defCreateDWordField)
   of noDefDevice:
     visit(namedObj.defDevice)
+  of noDefMutex:
+    visit(namedObj.defMutex)
   of noDefOpRegion:
     visit(namedObj.defOpRegion)
   of noDefField:
@@ -204,6 +235,9 @@ proc visit(defDevice: DefDevice) =
     for termObj in defDevice.body:
       visit(termObj)
   indwriteln("}")
+
+proc visit(defMutex: DefMutex) =
+  indwriteln(&"Mutex ({defMutex.name}, {defMutex.syncLevel})")
 
 proc visit(defOpRegion: DefOpRegion) =
   indwrite(&"OperationRegion ({defOpRegion.name}, {defOpRegion.space}, ")
@@ -251,6 +285,10 @@ proc visit(dataObject: DataObject) =
 
 proc visit(expr: ExpressionOpcode) =
   case expr.kind:
+  of expAcquire:
+    visit(expr.defAcquire)
+  of expAnd:
+    visit(expr.defAnd)
   of expBuffer:
     visit(expr.defBuffer)
   of expToHexString:
@@ -267,24 +305,54 @@ proc visit(expr: ExpressionOpcode) =
     visit(expr.defLEqual)
   of expLLess:
     visit(expr.defLLess)
+  of expLNot:
+    visit(expr.defLNot)
+  of expLOr:
+    visit(expr.defLOr)
+  of expOr:
+    visit(expr.defOr)
   of expIndex:
     visit(expr.defIndex)
   of expDerefOf:
     visit(expr.defDerefOf)
   of expIncrement:
     visit(expr.defIncrement)
+  of expShiftLeft:
+    visit(expr.defShiftLeft)
+  of expMethodInvocation:
+    visit(expr.call)
+
+proc visit(defAcquire: DefAcquire) =
+  indwrite(&"Acquire (")
+  visit(defAcquire.mutex)
+  writeln(&")")
+
+proc visit(defAnd: DefAnd) =
+  write(&"And (")
+  visit(defAnd.operand1)
+  write(&", ")
+  visit(defAnd.operand2)
+  if defAnd.target.kind != tgNullName:
+    write(&", ")
+    visit(defAnd.target)
+  write(&")")
 
 proc visit(defBuffer: DefBuffer) =
-  let uuid = toUuid(defBuffer.bytes)
-  if uuid.isSome:
-    write(&"\"{uuid.get}\"")
-  else:
-    indwrite(&"Buffer (")
-    for i, b in defBuffer.bytes:
-      write(&"{b:02x}")
-      if i < defBuffer.bytes.high:
-        write(" ")
-    writeln(&")")
+    case defBuffer.kind:
+    of bpBytes:
+      let uuid = toUuid(defBuffer.bytes)
+      if uuid.isSome:
+        write(&"\"{uuid.get}\"")
+      else:
+        write(&"Buffer (")
+        for i, b in defBuffer.bytes:
+          write(&"{b:02x}")
+          if i < defBuffer.bytes.high:
+            write(" ")
+        write(&")")
+
+    of bpResourceDesc:
+      visit(defBuffer.resourceDesc)
 
 proc visit(defToHexString: DefToHexString) =
   indwrite(&"ToHexString (")
@@ -335,12 +403,34 @@ proc visit(defLLess: DefLLess) =
   visit(defLLess.operand2)
   write(&")")
 
+proc visit(defLNot: DefLNot) =
+  write(&"LNot (")
+  visit(defLNot.operand)
+  write(&")")
+
+proc visit(defLOr: DefLOr) =
+  write(&"LOr (")
+  visit(defLOr.operand1)
+  write(&", ")
+  visit(defLOr.operand2)
+  write(&")")
+
+proc visit(defOr: DefOr) =
+  write(&"Or (")
+  visit(defOr.operand1)
+  write(&", ")
+  visit(defOr.operand2)
+  if defOr.target.kind != tgNullName:
+    write(&", ")
+    visit(defOr.target)
+  write(&")")
+
 proc visit(defIndex: DefIndex) =
   write(&"Index (")
   visit(defIndex.src)
   write(&", ")
   visit(defIndex.idx)
-  if defIndex.dst.isSome:
+  if defIndex.dst.kind != tgNullName:
     write(&", ")
     visit(defIndex.dst)
   write(&")")
@@ -355,6 +445,62 @@ proc visit(defIncrement: DefIncrement) =
   visit(defIncrement.addend)
   writeln(&")")
 
+proc visit(defShiftLeft: DefShiftLeft) =
+  write(&"ShiftLeft (")
+  visit(defShiftLeft.operand)
+  write(&", ")
+  visit(defShiftLeft.count)
+  if defShiftLeft.target.kind != tgNullName:
+    write(&", ")
+    visit(defShiftLeft.target)
+  write(&")")
+
+proc visit(methodInvocation: MethodInvocation) =
+  write(&"{methodInvocation.name} (")
+  for (i, arg) in methodInvocation.args.pairs:
+    visit(arg)
+    if i < methodInvocation.args.high:
+      write(&", ")
+  write(&")")
+
+## Resource Descriptors
+
+proc visit(resourceDesc: ResourceDescriptor) =
+  writeln("ResourceTemplate ()")
+  indwriteln("{")
+  indent:
+    case resourceDesc.kind:
+    of rdReserved: discard
+    of rdDWordAddressSpace:
+      visit(resourceDesc.dwordAddrSpace)
+  indwrite("}")
+
+proc visit(dwordAddrSpace: DWordAddrSpaceDesc) =
+  # resType        : ResourceType
+  # addrSpaceFlags : AddressSpaceFlags
+  # memFlags       : MemorySpecificFlags
+  # granularity:                  uint32
+  # minAddr:                      uint32
+  # maxAddr:                      uint32
+  # translationOffset:            uint32
+  # addressLength:                uint32
+  indwriteln("DWordSpace (")
+  indent:
+    indwriteln(&"  {dwordAddrSpace.resType: 20} # (_RT ) ResourceType")
+    indwriteln(&", {dwordAddrSpace.addrSpaceFlags.decodeType: 20} # (_DEC) Decode")
+    indwriteln(&", {dwordAddrSpace.addrSpaceFlags.minFixed: 20} # (_MIF) MinType")
+    indwriteln(&", {dwordAddrSpace.addrSpaceFlags.maxFixed: 20} # (_MAF) MaxType")
+    indwriteln(&", {dwordAddrSpace.memFlags.readWrite: 20} # (_TSF._RW ) Memory: Write Status")
+    indwriteln(&", {dwordAddrSpace.memFlags.memAttrs: 20} # (_TSF._MEM) Memory: Cacheability")
+    indwriteln(&", {dwordAddrSpace.memFlags.memType: 20} # (_TSF._MTP) Memory: Type")
+    indwriteln(&", {dwordAddrSpace.memFlags.memIOTrans: 20} # (_TFS._TTP) Memory: Memory to I/O Translation")
+    indwriteln(&", {dwordAddrSpace.granularity: <20x} # (_GRA) AddressGranularity")
+    indwriteln(&", {dwordAddrSpace.minAddr: <20x} # (_MIN) MinAddress")
+    indwriteln(&", {dwordAddrSpace.maxAddr: <20x} # (_MAX) MaxAddress")
+    indwriteln(&", {dwordAddrSpace.translationOffset: <20x} # (_TRA) AddressTranslation (Offset)")
+    indwriteln(&", {dwordAddrSpace.addressLength: <20x} # (_LEN) AddressLength")
+  indwriteln(")")
+
 ## StatementOpcode kinds
 ##   DefBreak | DefBreakPoint | DefContinue | DefFatal | DefIfElse | DefNoop | DefNotify
 ## | DefRelease | DefReset | DefReturn | DefSignal | DefSleep | DefStall | DefWhile
@@ -363,6 +509,10 @@ proc visit(stmt: StatementOpcode) =
   case stmt.kind:
   of stmtIfElse:
     visit(stmt.defIfElse)
+  of stmtRelease:
+    visit(stmt.defRelease)
+  of stmtReturn:
+    visit(stmt.defReturn)
   of stmtWhile:
     visit(stmt.defWhile)
 
@@ -381,6 +531,16 @@ proc visit(defIfElse: DefIfElse) =
         visit(termObj)
     indwriteln("}")
 
+proc visit(defRelease: DefRelease) =
+  indwrite("Release (")
+  visit(defRelease.mutex)
+  writeln(")")
+
+proc visit(defReturn: DefReturn) =
+  indwrite("Return (")
+  visit(defReturn.arg)
+  writeln(")")
+
 proc visit(defWhile: DefWhile) =
   indwrite("While (")
   visit(defWhile.predicate)
@@ -394,6 +554,7 @@ proc visit(defWhile: DefWhile) =
 ##   ComputationalData | DefPackage | DefVarPackage
 
 proc toUuid(bytes: seq[byte]): Option[string] =
+  const hexChars = "0123456789ABCDEF"
   # uuid format: aabbccdd-eeff-gghh-iijj-kkllmmnnoopp
   if bytes.len != 16:
     return none(string)
@@ -401,10 +562,30 @@ proc toUuid(bytes: seq[byte]): Option[string] =
   var uuid = newStringOfCap(36)
   uuid.setLen(32)
 
-  # convert 128-bit to UUID hex string
+  # convert seq[byte] to UUID hex string
+  # 1. convert aabbccdd
+  for i in 0 ..< 4:
+    let b = bytes[3 - i]
+    uuid[i * 2] = hexChars[b shr 4]
+    uuid[i * 2 + 1] = hexChars[b and 0x0F]
   
-
-
+  # 2. convert eeff
+  for i in 0 ..< 2:
+    let b = bytes[5 - i]
+    uuid[8 + i * 2] = hexChars[b shr 4]
+    uuid[8 + i * 2 + 1] = hexChars[b and 0x0F]
+  
+  # 3. convert gghh
+  for i in 0 ..< 2:
+    let b = bytes[7 - i]
+    uuid[12 + i * 2] = hexChars[b shr 4]
+    uuid[12 + i * 2 + 1] = hexChars[b and 0x0F]
+  
+  # 4. convert iijj-kkllmmnnoopp
+  for i in 0 ..< 8:
+    let b = bytes[8 + i]
+    uuid[16 + i * 2] = hexChars[b shr 4]
+    uuid[16 + i * 2 + 1] = hexChars[b and 0x0F]
 
   uuid.insert("-", 8)
   uuid.insert("-", 13)
@@ -449,8 +630,12 @@ proc visit(compData: ComputationalData) =
       write(eisaId.get)
     else:
       write(&"0x{compData.dwordConst:X}")
+  of cdString:
+    write(&"\"{compData.str}\"")
   of cdConstObj:
     visit(compData.constObj)
+  of cdDefBuffer:
+    visit(compData.defBuffer)
 
 proc visit(constObj: ConstObj) =
   case constObj:
@@ -473,6 +658,8 @@ proc visit(termArg: TermArg) =
     visit(termArg.argObj)
   of taLocalObj:
     visit(termArg.localObj)
+  of taName:
+    write(termArg.name)
 
 proc visit(argObj: ArgObj) =
   case argObj
@@ -511,8 +698,8 @@ proc visit(localObj: LocalObj) =
     write("Local7")
 
 proc visit(target: Target) =
-  if target.isSome:
-    visit(target.get)
+  if target.kind != tgNullName:
+    visit(target.superName)
 
 proc visit(superName: SuperName) =
   case superName.kind:
