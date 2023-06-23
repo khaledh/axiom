@@ -35,6 +35,7 @@ privateAccess(DefMethod)
 privateAccess(MethodFlags)
 
 privateAccess(ExpressionOpcode)
+privateAccess(RefTypeOpcode)
 privateAccess(DefAcquire)
 privateAccess(DefAnd)
 privateAccess(DefBuffer)
@@ -48,6 +49,8 @@ privateAccess(DefLLess)
 privateAccess(DefLNot)
 privateAccess(DefLOr)
 privateAccess(DefOr)
+privateAccess(PackageElement)
+privateAccess(DefPackage)
 privateAccess(DefIndex)
 privateAccess(DefDerefOf)
 privateAccess(DefIncrement)
@@ -58,6 +61,8 @@ privateAccess(ResourceDescriptor)
 privateAccess(AddressSpaceFlags)
 privateAccess(MemorySpecificFlags)
 privateAccess(DWordAddrSpaceDesc)
+privateAccess(ExtendedInterruptDesc)
+privateAccess(ExtendedInterruptFlags)
 
 privateAccess(StatementOpcode)
 privateAccess(DefIfElse)
@@ -94,6 +99,7 @@ proc visit(constObj: ConstObj)
 proc visit(defMethod: DefMethod)
 
 proc visit(expr: ExpressionOpcode)
+proc visit(rto: RefTypeOpcode)
 proc visit(defAcquire: DefAcquire)
 proc visit(defAnd: DefAnd)
 proc visit(defBuffer: DefBuffer)
@@ -107,6 +113,7 @@ proc visit(defLLess: DefLLess)
 proc visit(defLNot: DefLNot)
 proc visit(defLOr: DefLOr)
 proc visit(defOr: DefOr)
+proc visit(defPackage: DefPackage)
 proc visit(defIndex: DefIndex)
 proc visit(defDerefOf: DefDerefOf)
 proc visit(defIncrement: DefIncrement)
@@ -115,7 +122,7 @@ proc visit(methodInvocation: MethodInvocation)
 
 proc visit(resourceDesc: ResourceDescriptor)
 proc visit(dwordAddrSpace: DWordAddrSpaceDesc)
-
+proc visit(extInterrupt: ExtendedInterruptDesc)
 
 proc visit(stmt: StatementOpcode)
 proc visit(defIfElse: DefIfElse)
@@ -133,26 +140,48 @@ proc visit(simpleName: SimpleName)
 
 proc toUuid(bytes: seq[byte]): Option[string]
 
-var indlvl = 0
+var
+  indlvl = 0
+  isinline = @[false]
 
 template indent(body: untyped) =
   inc indlvl, 2
   body
   dec indlvl, 2
 
-proc indwrite(str: string) =
+template inline(body: untyped) =
+  isinline.add true
+  body
+  discard isinline.pop
+
+template noinline(body: untyped) =
+  isinline.add false
+  body
+  discard isinline.pop
+
+proc print(str: string) =
+  write str
+
+proc println(str: string) =
+  write str
+  if not isinline[^1]:
+    write "\n"
+
+proc indprint(str: string) =
   write " ".repeat(indlvl)
   write str
 
-proc indwriteln(str: string) =
-  indwrite(str)
-  writeln("")
+proc indprintln(str: string) =
+  indprint(str)
+  if not isinline[^1]:
+    writeln ""
 
 proc print*(termList: TermList) =
   visit(termList)
 
 proc visit(termList: TermList) =
   for termObj in termList:
+    indprint("")
     visit(termObj)
 
 ## TermList kinds
@@ -188,9 +217,10 @@ proc visit(nsModObj: NamespaceModifierObj) =
     visit(nsModObj.defScope)
 
 proc visit(defName: DefName) =
-  indwrite(&"Name ({defName.name}, ")
-  visit(defName.obj)
-  writeln(")")
+  print(&"Name ({defName.name}, ")
+  inline:
+    visit(defName.obj)
+  println(")")
 
 proc visit(namedObj: NamedObj) =
   case namedObj.kind:
@@ -211,11 +241,10 @@ proc visit(namedObj: NamedObj) =
 ##   DefAlias | DefName | DefScope
 
 proc visit(defScope: DefScope) =
-  indwriteln(&"Scope ({defScope.name}) {{")
+  println(&"Scope ({defScope.name}) {{")
   indent:
-    for termObj in defScope.terms:
-      visit(termObj)
-  indwriteln("}")
+    visit(defScope.terms)
+  indprintln("}")
 
 ## NamedObj kinds
 ##   DefBankField | DefCreateBitField | DefCreateByteField | DefCreateDWordField | DefCreateField
@@ -223,57 +252,58 @@ proc visit(defScope: DefScope) =
 ## | DefPowerRes | DefThermalZone
 
 proc visit(defCreateDWordField: DefCreateDWordField) =
-  indwrite(&"CreateDWordField (")
+  print(&"CreateDWordField (")
   visit(defCreateDWordField.srcBuffer)
-  write(", ")
+  print(", ")
   visit(defCreateDWordField.byteIndex)
-  writeln(&", {defCreateDWordField.name})")
+  println(&", {defCreateDWordField.name})")
 
 proc visit(defDevice: DefDevice) =
-  indwriteln(&"Device ({defDevice.name}) {{")
+  println(&"Device ({defDevice.name}) {{")
   indent:
-    for termObj in defDevice.body:
-      visit(termObj)
-  indwriteln("}")
+    visit(defDevice.body)
+  indprintln("}")
 
 proc visit(defMutex: DefMutex) =
-  indwriteln(&"Mutex ({defMutex.name}, {defMutex.syncLevel})")
+  println(&"Mutex ({defMutex.name}, {defMutex.syncLevel})")
 
 proc visit(defOpRegion: DefOpRegion) =
-  indwrite(&"OperationRegion ({defOpRegion.name}, {defOpRegion.space}, ")
+  print(&"OperationRegion ({defOpRegion.name}, {defOpRegion.space}, ")
   visit(defOpRegion.offset)
-  write(", ")
+  print(", ")
   visit(defOpRegion.len)
-  writeln(")")
+  println(")")
 
 proc visit(defField: DefField) =
-  indwrite(&"Field ({defField.regionName}, ")
-  write(&"{defField.flags.accessType}, ")
-  write(&"{defField.flags.lockRule}, ")
-  writeln(&"{defField.flags.updateRule}) {{")
+  print(&"Field ({defField.regionName}, ")
+  print(&"{defField.flags.accessType}, ")
+  print(&"{defField.flags.lockRule}, ")
+  println(&"{defField.flags.updateRule}) {{")
   indent:
     for element in defField.elements:
+      indprint("")
       visit(element)
-  indwriteln("}")
+  indprintln("}")
 
 proc visit(fieldElement: FieldElement) =
   case fieldElement.kind:
   of feNamedField:
-    indwriteln(&"{fieldElement.namedField.name}, {fieldElement.namedField.bits},")
+    println(&"{fieldElement.namedField.name}, {fieldElement.namedField.bits},")
   of feReservedField:
-    indwriteln(&"Offset (0x{fieldElement.reservedField.bits:x}),")
+    println(&"Offset (0x{fieldElement.reservedField.bits:x}),")
 
 proc visit(defMethod: DefMethod) =
-  indwrite(&"Method ({defMethod.name}")
+  print(&"Method ({defMethod.name}")
   if defMethod.flags.argCount > 0:
-    write(&", {defMethod.flags.argCount}")
+    print(&", {defMethod.flags.argCount}")
+  if defMethod.flags.serialized:
+    print(&", Serialized")
   if defMethod.flags.syncLevel > 0:
-    write(&", {defMethod.flags.syncLevel}")
-  writeln(") {")
+    print(&", {defMethod.flags.syncLevel}")
+  println(") {")
   indent:
-    for termObj in defMethod.terms:
-      visit(termObj)
-  indwriteln("}")
+    visit(defMethod.terms)
+  indprintln("}")
 
 ## TermArg kinds
 ##   ExpressionOpcode | DataObject | ArgObj | LocalObj | NamedString
@@ -282,6 +312,8 @@ proc visit(dataObject: DataObject) =
   case dataObject.kind:
   of doComputationalData:
     visit(dataObject.compData)
+  of doDefPackage:
+    visit(dataObject.defPackage)
 
 proc visit(expr: ExpressionOpcode) =
   case expr.kind:
@@ -311,6 +343,8 @@ proc visit(expr: ExpressionOpcode) =
     visit(expr.defLOr)
   of expOr:
     visit(expr.defOr)
+  of expPackage:
+    visit(expr.defPackage)
   of expIndex:
     visit(expr.defIndex)
   of expDerefOf:
@@ -322,184 +356,244 @@ proc visit(expr: ExpressionOpcode) =
   of expMethodInvocation:
     visit(expr.call)
 
+proc visit(rto: RefTypeOpcode) =
+  case rto.kind:
+  of rtoIndex:
+    visit(rto.defIndex)
+
 proc visit(defAcquire: DefAcquire) =
-  indwrite(&"Acquire (")
+  print(&"Acquire (")
   visit(defAcquire.mutex)
-  writeln(&")")
+  println(&")")
 
 proc visit(defAnd: DefAnd) =
-  write(&"And (")
+  print(&"And (")
   visit(defAnd.operand1)
-  write(&", ")
+  print(&", ")
   visit(defAnd.operand2)
   if defAnd.target.kind != tgNullName:
-    write(&", ")
+    print(&", ")
     visit(defAnd.target)
-  write(&")")
+  println(&")")
 
 proc visit(defBuffer: DefBuffer) =
     case defBuffer.kind:
     of bpBytes:
       let uuid = toUuid(defBuffer.bytes)
       if uuid.isSome:
-        write(&"\"{uuid.get}\"")
+        print(&"\"{uuid.get}\"")
       else:
-        write(&"Buffer (")
+        print(&"Buffer (")
         for i, b in defBuffer.bytes:
-          write(&"{b:02x}")
+          print(&"{b:02x}")
           if i < defBuffer.bytes.high:
-            write(" ")
-        write(&")")
+            print(" ")
+        print(&")")
 
     of bpResourceDesc:
       visit(defBuffer.resourceDesc)
 
 proc visit(defToHexString: DefToHexString) =
-  indwrite(&"ToHexString (")
-  visit(defToHexString.operand)
-  write(&", ")
-  visit(defToHexString.target)
-  writeln(&")")
+  print(&"ToHexString (")
+  inline:
+    visit(defToHexString.operand)
+    print(&", ")
+    visit(defToHexString.target)
+  println(&")")
 
 proc visit(defToBuffer: DefToBuffer) =
-  indwrite(&"ToBuffer (")
-  visit(defToBuffer.operand)
-  write(&", ")
-  visit(defToBuffer.target)
-  writeln(&")")
+  print(&"ToBuffer (")
+  inline:
+    visit(defToBuffer.operand)
+    print(&", ")
+    visit(defToBuffer.target)
+  println(&")")
 
 proc visit(defSubtract: DefSubtract) =
-  indwrite(&"Subtract (")
-  visit(defSubtract.operand1)
-  write(&", ")
-  visit(defSubtract.operand2)
-  write(&", ")
-  visit(defSubtract.target)
-  writeln(&")")
+  print(&"Subtract (")
+  inline:
+    visit(defSubtract.operand1)
+    print(&", ")
+    visit(defSubtract.operand2)
+    print(&", ")
+    visit(defSubtract.target)
+  println(&")")
 
 proc visit(defSizeOf: DefSizeOf) =
-  write(&"SizeOf (")
-  visit(defSizeOf.name)
-  write(&")")
+  print(&"SizeOf (")
+  inline:
+    visit(defSizeOf.name)
+  println(&")")
 
 proc visit(defStore: DefStore) =
-  indwrite(&"Store (")
-  visit(defStore.src)
-  write(&", ")
-  visit(defStore.dst)
-  writeln(&")")
+  print(&"Store (")
+  inline:
+    visit(defStore.src)
+    print(&", ")
+    visit(defStore.dst)
+  println(&")")
 
 proc visit(defLEqual: DefLEqual) =
-  write(&"LEqual (")
-  visit(defLEqual.operand1)
-  write(&", ")
-  visit(defLEqual.operand2)
-  write(&")")
+  print(&"LEqual (")
+  inline:
+    visit(defLEqual.operand1)
+    print(&", ")
+    visit(defLEqual.operand2)
+  println(&")")
 
 proc visit(defLLess: DefLLess) =
-  write(&"LLess (")
-  visit(defLLess.operand1)
-  write(&", ")
-  visit(defLLess.operand2)
-  write(&")")
+  print(&"LLess (")
+  inline:
+    visit(defLLess.operand1)
+    print(&", ")
+    visit(defLLess.operand2)
+  println(&")")
 
 proc visit(defLNot: DefLNot) =
-  write(&"LNot (")
-  visit(defLNot.operand)
-  write(&")")
+  print(&"LNot (")
+  inline:
+    visit(defLNot.operand)
+  println(&")")
 
 proc visit(defLOr: DefLOr) =
-  write(&"LOr (")
-  visit(defLOr.operand1)
-  write(&", ")
-  visit(defLOr.operand2)
-  write(&")")
+  print(&"LOr (")
+  inline:
+    visit(defLOr.operand1)
+    print(&", ")
+    visit(defLOr.operand2)
+  println(&")")
 
 proc visit(defOr: DefOr) =
-  write(&"Or (")
-  visit(defOr.operand1)
-  write(&", ")
-  visit(defOr.operand2)
-  if defOr.target.kind != tgNullName:
-    write(&", ")
-    visit(defOr.target)
-  write(&")")
+  print(&"Or (")
+  inline:
+    visit(defOr.operand1)
+    print(&", ")
+    visit(defOr.operand2)
+    if defOr.target.kind != tgNullName:
+      print(&", ")
+      visit(defOr.target)
+  println(&")")
+
+proc visit(packageElement: PackageElement) =
+  case packageElement.kind:
+  of peDataObj:
+    visit(packageElement.dataObj)
+  of peNameString:
+    print(packageElement.name)
+
+proc visit(defPackage: DefPackage) =
+  print("Package () {")
+  if defPackage.elements.len > 8:
+    noinline:
+      println("")
+      indent:
+        for (i, el) in defPackage.elements.pairs:
+          indprint("")
+          inline:
+            visit(el)
+          if i < defPackage.elements.high:
+            println(&",")
+        println("")
+      indprint("}")
+  else:
+    inline:
+      for (i, el) in defPackage.elements.pairs:
+        visit(el)
+        if i < defPackage.elements.high:
+          print(&", ")
+    println("}")
 
 proc visit(defIndex: DefIndex) =
-  write(&"Index (")
-  visit(defIndex.src)
-  write(&", ")
-  visit(defIndex.idx)
-  if defIndex.dst.kind != tgNullName:
-    write(&", ")
-    visit(defIndex.dst)
-  write(&")")
+  print(&"Index (")
+  inline:
+    visit(defIndex.src)
+    print(&", ")
+    visit(defIndex.idx)
+    if defIndex.dst.kind != tgNullName:
+      print(&", ")
+      visit(defIndex.dst)
+  println(&")")
 
 proc visit(defDerefOf: DefDerefOf) =
-  write(&"DerefOf (")
-  visit(defDerefOf.src)
-  write(&")")
+  print(&"DerefOf (")
+  inline:
+    visit(defDerefOf.src)
+  println(&")")
 
 proc visit(defIncrement: DefIncrement) =
-  indwrite(&"Increment (")
-  visit(defIncrement.addend)
-  writeln(&")")
+  print(&"Increment (")
+  inline:
+    visit(defIncrement.addend)
+  println(&")")
 
 proc visit(defShiftLeft: DefShiftLeft) =
-  write(&"ShiftLeft (")
-  visit(defShiftLeft.operand)
-  write(&", ")
-  visit(defShiftLeft.count)
-  if defShiftLeft.target.kind != tgNullName:
-    write(&", ")
-    visit(defShiftLeft.target)
-  write(&")")
+  print(&"ShiftLeft (")
+  inline:
+    visit(defShiftLeft.operand)
+    print(&", ")
+    visit(defShiftLeft.count)
+    if defShiftLeft.target.kind != tgNullName:
+      print(&", ")
+      visit(defShiftLeft.target)
+  println(&")")
 
 proc visit(methodInvocation: MethodInvocation) =
-  write(&"{methodInvocation.name} (")
-  for (i, arg) in methodInvocation.args.pairs:
-    visit(arg)
-    if i < methodInvocation.args.high:
-      write(&", ")
-  write(&")")
+  print(&"{methodInvocation.name} (")
+  inline:
+    for (i, arg) in methodInvocation.args.pairs:
+      visit(arg)
+      if i < methodInvocation.args.high:
+        print(&", ")
+  println(&")")
 
 ## Resource Descriptors
 
 proc visit(resourceDesc: ResourceDescriptor) =
-  writeln("ResourceTemplate ()")
-  indwriteln("{")
-  indent:
-    case resourceDesc.kind:
-    of rdReserved: discard
-    of rdDWordAddressSpace:
-      visit(resourceDesc.dwordAddrSpace)
-  indwrite("}")
+  noinline:
+    println("ResourceTemplate () {")
+    indent:
+      case resourceDesc.kind:
+      of rdReserved: discard
+      of rdDWordAddressSpace:
+        indprint("")
+        visit(resourceDesc.dwordAddrSpace)
+      of rdExtendedInterrupt:
+        indprint("")
+        visit(resourceDesc.extInterrupt)
+  indprintln("}")
 
 proc visit(dwordAddrSpace: DWordAddrSpaceDesc) =
-  # resType        : ResourceType
-  # addrSpaceFlags : AddressSpaceFlags
-  # memFlags       : MemorySpecificFlags
-  # granularity:                  uint32
-  # minAddr:                      uint32
-  # maxAddr:                      uint32
-  # translationOffset:            uint32
-  # addressLength:                uint32
-  indwriteln("DWordSpace (")
+  println("DWordSpace (")
   indent:
-    indwriteln(&"  {dwordAddrSpace.resType: 20} # (_RT ) ResourceType")
-    indwriteln(&", {dwordAddrSpace.addrSpaceFlags.decodeType: 20} # (_DEC) Decode")
-    indwriteln(&", {dwordAddrSpace.addrSpaceFlags.minFixed: 20} # (_MIF) MinType")
-    indwriteln(&", {dwordAddrSpace.addrSpaceFlags.maxFixed: 20} # (_MAF) MaxType")
-    indwriteln(&", {dwordAddrSpace.memFlags.readWrite: 20} # (_TSF._RW ) Memory: Write Status")
-    indwriteln(&", {dwordAddrSpace.memFlags.memAttrs: 20} # (_TSF._MEM) Memory: Cacheability")
-    indwriteln(&", {dwordAddrSpace.memFlags.memType: 20} # (_TSF._MTP) Memory: Type")
-    indwriteln(&", {dwordAddrSpace.memFlags.memIOTrans: 20} # (_TFS._TTP) Memory: Memory to I/O Translation")
-    indwriteln(&", {dwordAddrSpace.granularity: <20x} # (_GRA) AddressGranularity")
-    indwriteln(&", {dwordAddrSpace.minAddr: <20x} # (_MIN) MinAddress")
-    indwriteln(&", {dwordAddrSpace.maxAddr: <20x} # (_MAX) MaxAddress")
-    indwriteln(&", {dwordAddrSpace.translationOffset: <20x} # (_TRA) AddressTranslation (Offset)")
-    indwriteln(&", {dwordAddrSpace.addressLength: <20x} # (_LEN) AddressLength")
-  indwriteln(")")
+    indprintln(&"  {dwordAddrSpace.resType: 20} # (_RT ) ResourceType")
+    indprintln(&", {dwordAddrSpace.addrSpaceFlags.decodeType: 20} # (_DEC) Decode")
+    indprintln(&", {dwordAddrSpace.addrSpaceFlags.minFixed: 20} # (_MIF) MinType")
+    indprintln(&", {dwordAddrSpace.addrSpaceFlags.maxFixed: 20} # (_MAF) MaxType")
+    indprintln(&", {dwordAddrSpace.memFlags.readWrite: 20} # (_TSF._RW ) Memory: Write Status")
+    indprintln(&", {dwordAddrSpace.memFlags.memAttrs: 20} # (_TSF._MEM) Memory: Cacheability")
+    indprintln(&", {dwordAddrSpace.memFlags.memType: 20} # (_TSF._MTP) Memory: Type")
+    indprintln(&", {dwordAddrSpace.memFlags.memIOTrans: 20} # (_TFS._TTP) Memory: Memory to I/O Translation")
+    indprintln(&", {dwordAddrSpace.granularity: <20x} # (_GRA) AddressGranularity")
+    indprintln(&", {dwordAddrSpace.minAddr: <20x} # (_MIN) MinAddress")
+    indprintln(&", {dwordAddrSpace.maxAddr: <20x} # (_MAX) MaxAddress")
+    indprintln(&", {dwordAddrSpace.translationOffset: <20x} # (_TRA) AddressTranslation (Offset)")
+    indprintln(&", {dwordAddrSpace.addressLength: <20x} # (_LEN) AddressLength")
+  indprintln(")")
+
+proc visit(extInterrupt: ExtendedInterruptDesc) =
+  println("Interrupt (")
+  indent:
+    indprintln(&"  {extInterrupt.flags.resUsage: 20} # ResourceUsage")
+    indprintln(&", {extInterrupt.flags.mode: 20} # (_HE) EdgeLevel")
+    indprintln(&", {extInterrupt.flags.polarity: 20} # (_LL) ActiveLevel")
+    indprintln(&", {extInterrupt.flags.sharing: 20} # (_SHR) Shared")
+    indprintln(&", {extInterrupt.flags.wakeCap: 20} # (_WKC) Wake")
+  indprint(&") {{")
+  for (i, intNum) in extInterrupt.intNums.pairs:
+    print(&"{intNum}")
+    if i < extInterrupt.intNums.high:
+      print(&",")
+  println("}")
 
 ## StatementOpcode kinds
 ##   DefBreak | DefBreakPoint | DefContinue | DefFatal | DefIfElse | DefNoop | DefNotify
@@ -517,38 +611,38 @@ proc visit(stmt: StatementOpcode) =
     visit(stmt.defWhile)
 
 proc visit(defIfElse: DefIfElse) =
-  indwrite("If (")
-  visit(defIfElse.predicate)
-  writeln(") {")
+  print("If (")
+  inline:
+    visit(defIfElse.predicate)
+  println(") {")
   indent:
-    for termObj in defIfElse.ifBody:
-      visit(termObj)
-  indwriteln("}")
+    visit(defIfElse.ifBody)
+  indprintln("}")
   if defIfElse.elseBody.isSome:
-    indwriteln("Else {")
+    indprintln("Else {")
     indent:
-      for termObj in defIfElse.elseBody.get:
-        visit(termObj)
-    indwriteln("}")
+      visit(defIfElse.elseBody.get)
+    indprintln("}")
 
 proc visit(defRelease: DefRelease) =
-  indwrite("Release (")
+  print("Release (")
   visit(defRelease.mutex)
-  writeln(")")
+  println(")")
 
 proc visit(defReturn: DefReturn) =
-  indwrite("Return (")
-  visit(defReturn.arg)
-  writeln(")")
+  print("Return (")
+  inline:
+    visit(defReturn.arg)
+  println(")")
 
 proc visit(defWhile: DefWhile) =
-  indwrite("While (")
-  visit(defWhile.predicate)
-  writeln(") {")
+  print("While (")
+  inline:
+    visit(defWhile.predicate)
+  println(") {")
   indent:
-    for termObj in defWhile.body:
-      visit(termObj)
-  indwriteln("}")
+    visit(defWhile.body)
+  indprintln("}")
 
 ## DataObject kinds
 ##   ComputationalData | DefPackage | DefVarPackage
@@ -621,17 +715,17 @@ proc toEisaId(dword: uint32): Option[string] =
 proc visit(compData: ComputationalData) =
   case compData.kind:
   of cdByteConst:
-    write(&"0x{compData.byteConst:0X}")
+    print(&"0x{compData.byteConst:0X}")
   of cdWordConst:
-    write(&"0x{compData.wordConst:0X}")
+    print(&"0x{compData.wordConst:0X}")
   of cdDWordConst:
     let eisaId = toEisaId(compData.dwordConst)
     if eisaId.isSome:
-      write(eisaId.get)
+      print(eisaId.get)
     else:
-      write(&"0x{compData.dwordConst:X}")
+      print(&"0x{compData.dwordConst:X}")
   of cdString:
-    write(&"\"{compData.str}\"")
+    print(&"\"{compData.str}\"")
   of cdConstObj:
     visit(compData.constObj)
   of cdDefBuffer:
@@ -640,11 +734,11 @@ proc visit(compData: ComputationalData) =
 proc visit(constObj: ConstObj) =
   case constObj:
   of coZero:
-    write("Zero")
+    print("Zero")
   of coOne:
-    write("One")
+    print("One")
   of coOnes:
-    write("Ones")
+    print("Ones")
 
 ## Misc
 
@@ -659,43 +753,43 @@ proc visit(termArg: TermArg) =
   of taLocalObj:
     visit(termArg.localObj)
   of taName:
-    write(termArg.name)
+    print(termArg.name)
 
 proc visit(argObj: ArgObj) =
   case argObj
   of aoArg0:
-    write("Arg0")
+    print("Arg0")
   of aoArg1:
-    write("Arg1")
+    print("Arg1")
   of aoArg2:
-    write("Arg2")
+    print("Arg2")
   of aoArg3:
-    write("Arg3")
+    print("Arg3")
   of aoArg4:
-    write("Arg4")
+    print("Arg4")
   of aoArg5:
-    write("Arg5")
+    print("Arg5")
   of aoArg6:
-    write("Arg6")
+    print("Arg6")
 
 proc visit(localObj: LocalObj) =
   case localObj
   of loLocal0:
-    write("Local0")
+    print("Local0")
   of loLocal1:
-    write("Local1")
+    print("Local1")
   of loLocal2:
-    write("Local2")
+    print("Local2")
   of loLocal3:
-    write("Local3")
+    print("Local3")
   of loLocal4:
-    write("Local4")
+    print("Local4")
   of loLocal5:
-    write("Local5")
+    print("Local5")
   of loLocal6:
-    write("Local6")
+    print("Local6")
   of loLocal7:
-    write("Local7")
+    print("Local7")
 
 proc visit(target: Target) =
   if target.kind != tgNullName:
@@ -705,11 +799,13 @@ proc visit(superName: SuperName) =
   case superName.kind:
   of snSimpleName:
     visit(superName.simpleName)
+  of snRefTypeOpcode:
+    visit(superName.refTypeOpcode)
 
 proc visit(simpleName: SimpleName) =
   case simpleName.kind:
   of snName:
-    write(simpleName.name)
+    print(simpleName.name)
   of snArg:
     visit(simpleName.arg)
   of snLocal:

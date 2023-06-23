@@ -11,6 +11,8 @@ import std/tables
 import ../debug
 import ../devices/console
 
+var storeCount = 0
+
 type
   Char = enum
     chNull         = 0x00
@@ -40,6 +42,7 @@ type
     ocbNameOp             = 0x08
     ocbScopeOp            = 0x10
     ocbBufferOp           = 0x11
+    ocbPackageOp          = 0x12
     ocbMethodOp           = 0x14
     ocbLocal0Op           = 0x60
     ocbLocal1Op           = 0x61
@@ -254,9 +257,9 @@ type
     flags: MethodFlags
     terms: TermList
   MethodFlags {.packed.} = object
-    argCount   {.bitsize: 3}: range[0..7]
+    argCount   {.bitsize: 3}: uint8
     serialized {.bitsize: 1}: bool
-    syncLevel  {.bitsize: 4}: range[0..0xF]
+    syncLevel  {.bitsize: 4}: uint8
 
   DefMutex = ref object
     name: NameString
@@ -307,23 +310,23 @@ type
   SuperNameKind = enum
     snSimpleName
     # snDebugObj
-    # snReferenceTypeOpcode
+    snRefTypeOpcode
   SuperName = ref object
     case kind: SuperNameKind
-    of snSimpleName:          simpleName: SimpleName
-    # of snDebugObj:            debugObj: DebugObj
-    # of snReferenceTypeOpcode: referenceTypeOpcode: ReferenceTypeOpcode
+    of snSimpleName:    simpleName: SimpleName
+    # of snDebugObj:    debugObj: DebugObj
+    of snRefTypeOpcode: refTypeOpcode: RefTypeOpcode
 
   NameString = string
 
   DataObjectKind = enum
     doComputationalData
-    # doDefPackage
+    doDefPackage
     # doDefVarPackage
   DataObject = ref object
     case kind: DataObjectKind
     of doComputationalData: compData: ComputationalData
-    # of doDefPackage:        defPackage: DefPackage
+    of doDefPackage:        defPackage: DefPackage
     # of doDefVarPackage:     defVarPackage: DefVarPackage
 
   ComputationalDataKind = enum
@@ -388,6 +391,7 @@ type
     expAcquire
     expShiftLeft
     expMethodInvocation
+    expPackage
   ExpressionOpcode = ref object
     case kind: ExpressionOpcodeKind
     of expAcquire: defAcquire: DefAcquire
@@ -425,7 +429,7 @@ type
     # DefNot
     # DefObjectType
     of expOr: defOr: DefOr
-    # package: Package
+    of expPackage: defPackage: DefPackage
     # var_package: VarPackage
     # ref_of: RefOf
     of expShiftLeft: defShiftLeft: DefShiftLeft
@@ -443,6 +447,16 @@ type
     # DefWait
     # DefXOr
     of expMethodInvocation: call: MethodInvocation
+
+  RefTypeOpcodeKind = enum
+    # rtoRefOf
+    # rtoDerefOf
+    rtoIndex
+  RefTypeOpcode = ref object
+    case kind: RefTypeOpcodeKind
+    # of rtoRefOf:   defRefOf: DefRefOf
+    # of rtoDerefOf: defDerefOf: DerefOf
+    of rtoIndex:   defIndex: DefIndex
 
   DefAcquire = ref object
     mutex: SuperName
@@ -501,6 +515,16 @@ type
     operand1: Operand
     operand2: Operand
     target: Target
+
+  DefPackage = ref object
+    elements: seq[PackageElement]
+  PackageElementKind = enum
+    peDataObj
+    peNameString
+  PackageElement = ref object
+    case kind: PackageElementKind
+    of peDataObj: dataObj: DataObject
+    of peNameString: name: NameString
 
   DefIndex = ref object
     src: TermArg
@@ -622,18 +646,46 @@ type
     # resourceSourceIndex:        uint8
     # resourceSource:             string
 
+  ResourceUsage = enum
+    ruProducer = (0, "Producer")
+    ruConsumer = (1, "Consumer")
+
+  InterruptMode = enum
+    imLevelTriggered = (0, "LevelTriggered")
+    imEdgeTriggered  = (1, "EdgeTriggered")
+  InterruptPolarity = enum
+    ipActiveHigh = (0, "ActiveHigh")
+    ipActiveLow  = (1, "ActiveLow")
+  InterruptSharing = enum
+    isShared    = (0, "Shared")
+    isExclusive = (1, "Exclusive")
+  InterruptWakeCap = enum
+    iwNotWakeCapable = (0, "NotWakeCapable")
+    iwWakeCapable    = (1, "WakeCapable")
+  ExtendedInterruptFlags {.packed.} = object
+    resUsage {.bitsize: 1}: ResourceUsage
+    mode     {.bitsize: 1}: InterruptMode
+    polarity {.bitsize: 1}: InterruptPolarity
+    sharing  {.bitsize: 1}: InterruptSharing
+    wakeCap  {.bitsize: 1}: InterruptWakeCap
+    reserved {.bitsize: 3}: uint8
+  ExtendedInterruptDesc {.packed.} = ref object
+    flags: ExtendedInterruptFlags
+    intNums: seq[uint32]
+
   ResourceDescriptorKind = enum
     rdReserved          = 0x00
     # rdGenericRegister   = 0x82
     rdDWordAddressSpace = 0x87
     # rdWordAddressSpace  = 0x88
-    # rdExtendedInterrupt = 0x89
+    rdExtendedInterrupt = 0x89
     # rdQWordAddressSpace = 0x8A
     # rdGpioConnection    = 0x8B
   ResourceDescriptor = ref object
     case kind: ResourceDescriptorKind
     of rdReserved: discard
     of rdDWordAddressSpace: dwordAddrSpace: DWordAddrSpaceDesc
+    of rdExtendedInterrupt: extInterrupt: ExtendedInterruptDesc
 
 
 # proc dumpHex*(bytes: openArray[uint8]) =
@@ -719,6 +771,7 @@ proc argObj(p: var Parser): Option[ArgObj]
 proc localObj(p: var Parser): Option[LocalObj]
 
 proc expressionOpcode(p: var Parser): Option[ExpressionOpcode]
+proc refTypeOpcode(p: var Parser): Option[RefTypeOpcode]
 proc defAcquire(p: var Parser): Option[DefAcquire]
 proc defAnd(p: var Parser): Option[DefAnd]
 proc defBuffer(p: var Parser): Option[DefBuffer]
@@ -732,6 +785,7 @@ proc defLLess(p: var Parser): Option[DefLLess]
 proc defLNot(p: var Parser): Option[DefLNot]
 proc defLOr(p: var Parser): Option[DefLOr]
 proc defOr(p: var Parser): Option[DefOr]
+proc defPackage(p: var Parser): Option[DefPackage]
 proc defIndex(p: var Parser): Option[DefIndex]
 proc defDerefOf(p: var Parser): Option[DefDerefOf]
 proc defIncrement(p: var Parser): Option[DefIncrement]
@@ -740,6 +794,7 @@ proc methodInvocation(p: var Parser): Option[MethodInvocation]
 
 proc resourceDesc(p: var Parser): Option[ResourceDescriptor]
 proc dwordAddrSpaceDesc(p: var Parser): Option[DWordAddrSpaceDesc]
+proc extendedInterruptDesc(p: var Parser): Option[ExtendedInterruptDesc]
 
 proc statementOpcode(p: var Parser): Option[StatementOpcode]
 proc defIfElse(p: var Parser): Option[DefIfElse]
@@ -993,7 +1048,6 @@ proc defMethod(p: var Parser): Option[DefMethod] =
       p.withContext(pkgLen - bytesRead):
         let name = p.nameString()
         if name.isSome:
-          debugln(&"DefMethod: {name.get}")
           let flags = p.readByte()
           if flags.isSome:
             let terms = p.termList()
@@ -1059,9 +1113,7 @@ proc nameString(p: var Parser): Option[NameString] =
     result = p.namePath().map(np => NameString("\\" & np))
   else:
     let prefix = p.prefixPath().get("")
-    debugln(&"nameString: before namePath(), loc={p.ctx.loc}")
     result = p.namePath().map(np => NameString(prefix & np))
-    debugln(&"nameString: after namePath(), loc={p.ctx.loc}")
 
 proc prefixPath(p: var Parser): Option[string] =
   # PrefixPath := Nothing | <'^' PrefixPath>
@@ -1075,27 +1127,19 @@ proc prefixPath(p: var Parser): Option[string] =
 proc namePath(p: var Parser): Option[string] =
   # NamePath := NameSeg | DualNamePath | MultiNamePath | NullName
   # debugln(&"NamePath")
-  debugln(&"namePath: before nameSeg(), loc={p.ctx.loc}")
   let nameSeg = p.nameSeg()
-  debugln(&"namePath: after nameSeg(), loc={p.ctx.loc}")
   if nameSeg.isSome:
     result = option nameSeg.get
   else:
-    debugln(&"namePath: before dualNamePath(), loc={p.ctx.loc}")
     let dualNamePath = p.dualNamePath()
-    debugln(&"namePath: after dualNamePath(), loc={p.ctx.loc}")
     if dualNamePath.isSome:
       result = option dualNamePath.get
     else:
-      debugln(&"namePath: before multiNamePath(), loc={p.ctx.loc}")
       let multiNamePath = p.multiNamePath()
-      debugln(&"namePath: after multiNamePath(), loc={p.ctx.loc}")
       if multiNamePath.isSome:
         result = option multiNamePath.get
       else:
-        debugln(&"namePath: before chr(chNull), loc={p.ctx.loc}")
         let nullName = p.chr(chNull)
-        debugln(&"namePath: after chr(chNull), loc={p.ctx.loc}")
         if nullName.isSome:
           result = option ""
 
@@ -1160,34 +1204,28 @@ proc nameChar(p: var Parser): Option[char] =
 
 proc termArg(p: var Parser): Option[TermArg] =
   # TermArg := ExpressionOpcode | DataObject | ArgObj | LocalObj | NameString
-  debugln(&"TermArg")
 
   # DataObject needs to come before ExpressionOpcode, because of an ambiguity between:
   #   DataObject -> ComputationalData -> ConstObj -> ZeroOp (0x00), and
   #   ExpressionOpcode -> MethodInvocation -> NameString -> NamePath -> NullName (0x00)
   # In this case we're giving precedence to DataObject, which is more common.
 
-  debugln(&"  loc: {p.ctx.loc}")
   result = p.dataObject().map(dobj => TermArg(kind: taDataObject, dataObj: dobj))
   if result.isSome:
     return
   
-  debugln(&"  loc: {p.ctx.loc}")
   result = p.expressionOpcode().map(exp => TermArg(kind: taExpr, expr: exp))
   if result.isSome:
     return
 
-  debugln(&"  loc: {p.ctx.loc}")
   result = p.argObj().map(aobj => TermArg(kind: taArgObj, argObj: aobj))
   if result.isSome:
     return
 
-  debugln(&"  loc: {p.ctx.loc}")
   result = p.localObj().map(lobj => TermArg(kind: taLocalObj, localObj: lobj))
   if result.isSome:
     return
 
-  debugln(&"  loc: {p.ctx.loc}")
   result = p.nameString().map(ns => TermArg(kind: taName, name: ns))
   if result.isSome:
     return
@@ -1215,6 +1253,31 @@ proc superName(p: var Parser): Option[SuperName] =
     return
 
   # result = p.debugObj().map(dobj => SuperName(kind: snDebugObj, debugObj: dobj))
+  # if result.isSome:
+  #   return
+
+  result = p.refTypeOpcode().map(rto => SuperName(kind: snRefTypeOpcode, refTypeOpcode: rto))
+  if result.isSome:
+    return
+
+proc refTypeOpcode(p: var Parser): Option[RefTypeOpcode] =
+  # ReferenceTypeOpcode := DefRefOf | DefDerefOf | DefIndex | UserTermObj
+  # debugln(&"RefTypeOpcode")
+  # result = p.defRefOf().map(dro => RefTypeOpcode(kind: rtoDefRefOf, defRefOf: dro))
+  # if result.isSome:
+  #   return
+
+  # result = p.defDerefOf().map(ddo => RefTypeOpcode(kind: rtoDefDerefOf, defDerefOf: ddo))
+  # if result.isSome:
+  #   return
+
+  result = p.defIndex().map(di => RefTypeOpcode(kind: rtoIndex, defIndex: di))
+  if result.isSome:
+    return
+
+  # result = p.userTermObj().map(uto => RefTypeOpcode(kind: rtoUserTermObj, userTermObj: uto))
+  # if result.isSome:
+  #   return
 
 ### DataObject
 
@@ -1222,6 +1285,10 @@ proc dataObject(p: var Parser): Option[DataObject] =
   # DataObject := ComputationalData | DefPackage | DefVarPackage
   # debugln(&"DataObject")
   result = p.computationalData().map(cd => DataObject(kind: doComputationalData, compData: cd))
+  if result.isSome:
+    return
+
+  result = p.defPackage().map(dp => DataObject(kind: doDefPackage, defPackage: dp))
   if result.isSome:
     return
 
@@ -1381,6 +1448,10 @@ proc expressionOpcode(p: var Parser): Option[ExpressionOpcode] =
   if result.isSome:
     return
 
+  result = p.defPackage().map(dp => ExpressionOpcode(kind: expPackage, defPackage: dp))
+  if result.isSome:
+    return
+
   result = p.defIndex().map(di => ExpressionOpcode(kind: expIndex, defIndex: di))
   if result.isSome:
     return
@@ -1397,11 +1468,9 @@ proc expressionOpcode(p: var Parser): Option[ExpressionOpcode] =
   if result.isSome:
     return
 
-  debugln(&"Before MethodInvocation: loc={p.ctx.loc}")
   result = p.methodInvocation().map(mi => ExpressionOpcode(kind: expMethodInvocation, call: mi))
   if result.isSome:
     return
-  debugln(&"After MethodInvocation: loc={p.ctx.loc}")
 
 proc defAcquire(p: var Parser): Option[DefAcquire] =
   # DefAcquire := AcquireOp MutexObject Timeout
@@ -1435,7 +1504,6 @@ proc defBuffer(p: var Parser): Option[DefBuffer] =
     if pkgResult.isSome:
       let (bytesRead, pkgLen) = pkgResult.get
       p.withContext(pkgLen - bytesRead):
-        debugln(&"DefBuffer: {pkgLen=}, {bytesRead=}")
         let buffSize = p.termArg()
         if buffSize.isSome:
           let resourceDesc = p.resourceDesc()
@@ -1482,7 +1550,6 @@ proc defSubtract(p: var Parser): Option[DefSubtract] =
     if op1.isSome:
       let op2 = p.operand()
       if op2.isSome:
-        debugln(&"DefSubtract")
         let target = p.target()
         if target.isSome:
           result = option DefSubtract(operand1: op1.get, operand2: op2.get, target: target.get)
@@ -1495,17 +1562,12 @@ proc defSizeOf(p: var Parser): Option[DefSizeOf] =
 
 proc defStore(p: var Parser): Option[DefStore] =
   # DefStore := StoreOp TermArg SuperName
-  debugln(&"DefStore: Begin")
   if p.matchOpCodeByte(ocbStoreOp):
-    debugln(&"DefStore: OpCode matched")
-    debugln(&"DefStore: loc={p.ctx.loc}")
+    inc storeCount
     let ta = p.termArg()
-    debugln(&"DefStore: loc={p.ctx.loc}")
     if ta.isSome:
-      debugln(&"DefStore: TermArg matched")
       let sn = p.superName()
       if sn.isSome:
-        debugln(&"DefStore: SuperName matched")
         result = option DefStore(src: ta.get, dst: sn.get)
 
 proc defLEqual(p: var Parser): Option[DefLEqual] =
@@ -1556,6 +1618,38 @@ proc defOr(p: var Parser): Option[DefOr] =
         if target.isSome:
           result = option DefOr(operand1: op1.get, operand2: op2.get, target: target.get)
 
+proc packageElement(p: var Parser): Option[PackageElement] =
+  # PackageElement := DataObject | NameString
+  # debugln(&"DefPackageElement")
+  result = p.dataObject().map(dobj => PackageElement(kind: peDataObj, dataObj: dobj))
+  if result.isSome:
+    return
+
+  result = p.nameString().map(ns => PackageElement(kind: peNameString, name: ns))
+  if result.isSome:
+    return
+
+proc defPackage(p: var Parser): Option[DefPackage] =
+  # DefPackage := PackageOp PkgLength NumElements PackageElementList
+  #   PackageElementList := Nothing | <PackageElement PackageElementList>
+  #   PackageElement := DataRefObject | NameString
+  # debugln(&"DefPackage")
+  if p.matchOpCodeByte(ocbPackageOp):
+    var pkgResult = p.pkgLength()
+    if pkgResult.isSome:
+      let (bytesRead, pkgLen) = pkgResult.get
+      p.withContext(pkgLen - bytesRead):
+        let numElements = p.readByte()
+        if numElements.isSome:
+          let num = numElements.get
+          var elements: seq[PackageElement]
+          for i in 0 ..< num.int:
+            let pe = p.packageElement()
+            if pe.isSome:
+              elements.add(pe.get)
+          # if elements.len == num.int:
+          result = option DefPackage(elements: elements)
+
 proc defIndex(p: var Parser): Option[DefIndex] =
   # DefIndex := IndexOp BuffPkgStrObj IndexValue Target
   # debugln(&"DefIndex")
@@ -1597,38 +1691,28 @@ proc methodInvocation(p: var Parser): Option[MethodInvocation] =
   # MethodInvocation := NameString TermArgList
   #   TermArgList := Nothing | <TermArg TermArgList>
   # debugln(&"MethodInvocation")
-  debugln(&"MethodInvocation: loc={p.ctx.loc}")
   let loc = p.ctx.loc
 
   # get method name
-  debugln(&"MethodInvocation: reading NameString")
   let name = p.nameString()
-  debugln(&"MethodInvocation: loc={p.ctx.loc}")
   if name.isSome:
-    debugln(&"MethodInvocation: name={name.get}")
     # check if method is defined
     let m = p.methods.getOrDefault(name.get, nil)
     if m.isNil:
       # not a method, rewind context
-      debugln(&"MethodInvocation: rewinding to loc={loc}")
       p.ctx.loc = loc
       return
 
     # get method args
     var args = newSeqOfCap[TermArg](m.flags.argCount)
-    debugln(&"MethodInvocation: reading {m.flags.argCount} args")
-    for i in 0 ..< m.flags.argCount:
-      debugln(&"MethodInvocation: reading TermArg, loc={p.ctx.loc}")
+    for i in 0.uint8 ..< m.flags.argCount:
       let arg = p.termArg()
-      debugln(&"MethodInvocation: returned, {p.ctx.loc}")
       if arg.isNone:
         # args don't match expected count, rewind context
-        debugln(&"MethodInvocation: arg count mismatch, rewinding to loc={loc}")
         p.ctx.loc = loc
         return
       args.add(arg.get)
 
-    debugln(&"MethodInvocation: done, {p.ctx.loc}")
     result = option MethodInvocation(name: name.get, args: args)
 
 ### Resource Descriptors
@@ -1638,37 +1722,31 @@ proc resourceDesc(p: var Parser): Option[ResourceDescriptor] =
   if result.isSome:
     return
 
+  result = p.extendedInterruptDesc().map(eid => ResourceDescriptor(kind: rdExtendedInterrupt, extInterrupt: eid))
+  if result.isSome:
+    return
+
 proc dwordAddrSpaceDesc(p: var Parser): Option[DWordAddrSpaceDesc] =
   # debugln(&"DWordAddressSpace")
   if p.matchByte(rdDWordAddressSpace.byte):
-    debugln(&"DWordAddressSpace")
     let len = p.readWord()
     if len.isSome:
-      debugln(&"  {len.get=}")
       let resType = p.readByte()
       if resType.isSome:
-        debugln(&"  {resType.get=}")
         let addrSpaceFlags = p.readByte()
         if addrSpaceFlags.isSome:
-          debugln(&"  addrSpaceFlags={addrSpaceFlags.get:0>8b}")
           let memFlags = p.readByte()
           if memFlags.isSome:
-            debugln(&"  memFlags={memFlags.get:0>8b}")
             let granularity = p.readDWord()
             if granularity.isSome:
-              debugln(&"  granularity={granularity.get:0>8x}")
               let addrRangeMin = p.readDWord()
               if addrRangeMin.isSome:
-                debugln(&"  addrRangeMin={addrRangeMin.get:x}")
                 let addrRangeMax = p.readDWord()
                 if addrRangeMax.isSome:
-                  debugln(&"  addrRangeMax={addrRangeMax.get:x}")
                   let addrTranslationOffset = p.readDWord()
                   if addrTranslationOffset.isSome:
-                    debugln(&"  addrTranslationOffset={addrTranslationOffset.get:x}")
                     let addrLen = p.readDWord()
                     if addrLen.isSome:
-                      debugln(&"  addrLen={addrLen.get:x}")
                       result = option DWordAddrSpaceDesc(
                         resType: cast[AddressSpaceResourceType](resType.get),
                         addrSpaceFlags: cast[AddressSpaceFlags](addrSpaceFlags.get),
@@ -1679,6 +1757,25 @@ proc dwordAddrSpaceDesc(p: var Parser): Option[DWordAddrSpaceDesc] =
                         translationOffset: addrTranslationOffset.get,
                         addressLength: addrLen.get
                       )
+
+proc extendedInterruptDesc(p: var Parser): Option[ExtendedInterruptDesc] =
+  # debugln(&"ExtendedInterrupt")
+  if p.matchByte(rdExtendedInterrupt.byte):
+    let len = p.readWord()
+    if len.isSome:
+      let flags = p.readByte()
+      if flags.isSome:
+        let count = p.readByte()
+        if count.isSome:
+          var intNums: seq[uint32]
+          for i in 0.uint8 ..< count.get:
+            let intNum = p.readDWord()
+            if intNum.isSome:
+              intNums.add(intNum.get)
+          result = option ExtendedInterruptDesc(
+            flags: cast[ExtendedInterruptFlags](flags.get),
+            intNums: intNums
+          )
 
 ### Statements
 
