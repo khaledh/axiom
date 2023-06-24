@@ -63,15 +63,20 @@ type
     ocbSubtractOp         = 0x74
     ocbIncrementOp        = 0x75
     ocbShiftLeftOp        = 0x79
+    ocbShiftRightOp       = 0x7A
     ocbAndOp              = 0x7B
     ocbOrOp               = 0x7D
     ocbDerefOfOp          = 0x83
+    ocbNotifyOp           = 0x86
     ocbSizeOfOp           = 0x87
     ocbIndexOp            = 0x88
     ocbCreateDWordFieldOp = 0x8A
+    ocbObjectTypeOp       = 0x8E
+    ocbLAndOp             = 0x90
     ocbLOrOp              = 0x91
     ocbLNotOp             = 0x92
     ocbLEqualOp           = 0x93
+    ocbLGreaterOp         = 0x94
     ocbLLessOp            = 0x95
     ocbToBufferOp         = 0x96
     ocbToHexStringOp      = 0x98
@@ -79,6 +84,7 @@ type
     ocbElseOp             = 0xA1
     ocbWhileOp            = 0xA2
     ocbReturnOp           = 0xA4
+    ocbBreakOp            = 0xA5
     ocbOnesOp             = 0xFF
 
   OpCodeWord = enum
@@ -99,13 +105,13 @@ type
     # ocwToBCD              = 0x29_5B
     # ocwReserved           = 0x2A_5B
     # ocwRevisionOp         = 0x30_5B
-    # ocwDebugOp            = 0x31_5B
+    ocwDebugOp            = 0x31_5B
     # ocwFatalOp            = 0x32_5B
     # ocwTimerOp            = 0x33_5B
     ocwOpRegionOp         = 0x80_5B
     ocwFieldOp            = 0x81_5B
     ocwDeviceOp           = 0x82_5B
-    # ocwProcessorOp        = 0x83_5B // deprecated in 6.4
+    ocwProcessorOp        = 0x83_5B # deprecated in 6.4
     # ocwPowerResOp         = 0x84_5B
     # ocwThermalZoneOp      = 0x85_5B
     # ocwIndexFieldOp       = 0x86_5B
@@ -177,7 +183,7 @@ type
     noDefMutex
     noDefOpRegion
     # noDefPowerRes
-    # noDefProcessor # deprecated in 6.4
+    noDefProcessor # deprecated in 6.4
     # noDefThermalZone
   NamedObj = ref object
     case kind: NamedObjKind
@@ -198,7 +204,7 @@ type
     of noDefMutex:            defMutex: DefMutex
     of noDefOpRegion:         defOpRegion: DefOpRegion
     # of noDefPowerRes:         defPowerRes: DefPowerRes
-    # of noDefProcessor:        defProcessor: DefProcessor
+    of noDefProcessor:        defProcessor: DefProcessor
     # of noDefThermalZone:      defThermalZone: DefThermalZone
 
   DefCreateDWordField = ref object
@@ -283,6 +289,14 @@ type
     rsGenericSerialBus = (0x09, "GenericSerialBus")
     rsPCC              = (0x0A, "PCC")
 
+  # deprecated in 6.4
+  DefProcessor = ref object
+    name: NameString
+    procID: uint8
+    pblkAddr: uint32
+    pblkLen: uint8
+    objects: TermList
+
   TermArgKind = enum
     taExpr
     taDataObject
@@ -309,12 +323,12 @@ type
 
   SuperNameKind = enum
     snSimpleName
-    # snDebugObj
+    snDebugObj
     snRefTypeOpcode
   SuperName = ref object
     case kind: SuperNameKind
     of snSimpleName:    simpleName: SimpleName
-    # of snDebugObj:    debugObj: DebugObj
+    of snDebugObj:    debugObj: DebugObj
     of snRefTypeOpcode: refTypeOpcode: RefTypeOpcode
 
   NameString = string
@@ -371,6 +385,8 @@ type
     loLocal5 = ocbLocal5Op
     loLocal6 = ocbLocal6Op
     loLocal7 = ocbLocal7Op
+  
+  DebugObj = object
 
   ExpressionOpcodeKind = enum
     expBuffer
@@ -381,6 +397,7 @@ type
     expStore
     expLEqual
     expLLess
+    expLGreater
     expIndex
     expDerefOf
     expIncrement
@@ -390,8 +407,11 @@ type
     expOr
     expAcquire
     expShiftLeft
+    expShiftRight
     expMethodInvocation
     expPackage
+    expLAnd
+    expObjectType
   ExpressionOpcode = ref object
     case kind: ExpressionOpcodeKind
     of expAcquire: defAcquire: DefAcquire
@@ -410,9 +430,9 @@ type
     # DefFromBCD
     of expIncrement: defIncrement: DefIncrement
     of expIndex: defIndex: DefIndex
-    # land: LAnd
+    of expLAnd: defLAnd: DefLAnd
     of expLEqual: defLEqual: DefLEqual
-    # lgreater: LGreater
+    of expLGreater: defLGreater: DefLGreater
     # DefLGreaterEqual
     of expLLess: defLLess: DefLLess
     # DefLLessEqual
@@ -427,13 +447,13 @@ type
     # DefNAnd
     # DefNOr
     # DefNot
-    # DefObjectType
+    of expObjectType: defObjectType: DefObjectType
     of expOr: defOr: DefOr
     of expPackage: defPackage: DefPackage
     # var_package: VarPackage
     # ref_of: RefOf
     of expShiftLeft: defShiftLeft: DefShiftLeft
-    # shift_right: ShiftRight
+    of expShiftRight: defShiftRight: DefShiftRight
     of expSizeOf: defSizeOf: DefSizeOf
     of expStore: defStore: DefStore
     of expSubtract: defSubtract: DefSubtract
@@ -468,13 +488,13 @@ type
     target: Target
 
   BufferPayloadKind = enum
-    bpResourceDesc
     bpBytes
+    bpResources
   DefBuffer = ref object
     size: TermArg
     case kind: BufferPayloadKind
     of bpBytes: bytes: seq[byte]
-    of bpResourceDesc: resourceDesc: ResourceDescriptor
+    of bpResources: resources: seq[ResourceDescriptor]
 
   DefToHexString = ref object
     operand: Operand
@@ -496,6 +516,10 @@ type
     src: TermArg
     dst: SuperName
 
+  DefLAnd = ref object
+    operand1: Operand
+    operand2: Operand
+
   DefLEqual = ref object
     operand1: Operand
     operand2: Operand
@@ -503,13 +527,31 @@ type
   DefLLess = ref object
     operand1: Operand
     operand2: Operand
-  
+
+  DefLGreater = ref object
+    operand1: Operand
+    operand2: Operand
+
   DefLNot = ref object
     operand: Operand
 
   DefLOr = ref object
     operand1: Operand
     operand2: Operand
+
+  ObjectTypeKind = enum
+    otSimpleName
+    otDebugObj
+    # otRefOf
+    otDerefOf
+    otIndex
+  DefObjectType = ref object
+    case kind: ObjectTypeKind
+    of otSimpleName: name: SimpleName
+    of otDebugObj: debugObj: DebugObj
+    # of otRefOf: refOf: DefRefOf
+    of otDerefOf: derefOf: DefDerefOf
+    of otIndex: index: DefIndex
 
   DefOr = ref object
     operand1: Operand
@@ -542,24 +584,31 @@ type
     count: TermArg
     target: Target
 
+  DefShiftRight = ref object
+    operand: Operand
+    count: TermArg
+    target: Target
+
   MethodInvocation = ref object
     name: NameString
     args: seq[TermArg]
 
   StatementOpcodeKind = enum
+    stmtBreak
     stmtIfElse
+    stmtNotify
     stmtWhile
     stmtRelease
     stmtReturn
   StatementOpcode = ref object
     case kind: StatementOpcodeKind
-    # break_: *Break,
+    of stmtBreak: defBreak: DefBreak
     # // break_point: *BreakPoint,
     # // continue_: *Continue,
     # // fatal: *Fatal,
     of stmtIfElse: defIfElse: DefIfElse
     # // noop: *Noop,
-    # notify: *Notify,
+    of stmtNotify: defNotify: DefNotify
     of stmtRelease: defRelease: DefRelease
     # // reset: *Reset,
     of stmtReturn: defReturn: DefReturn
@@ -568,10 +617,16 @@ type
     # // stall: *Stall,
     of stmtWhile: defWhile: DefWhile
 
+  DefBreak = object
+
   DefIfElse = ref object
     predicate: TermArg
     ifBody: TermList
     elseBody: Option[TermList]
+
+  DefNotify = ref object
+    obj: SuperName
+    value: TermArg
 
   DefRelease = ref object
     mutex: SuperName
@@ -593,10 +648,42 @@ type
     of tgSuperName: superName: SuperName
     of tgNullName: discard
 
+  # Resource Descriptors
+  ResourceDescriptorKind = enum
+    rdReserved          = 0x00
+    rdIrqNoFlags        = 0x22
+    rdIrq               = 0x23
+    rdIOPort            = 0x47
+    # rdGenericRegister   = 0x82
+    rdMemory32Fixed     = 0x86
+    rdDWordAddressSpace = 0x87
+    rdWordAddressSpace  = 0x88
+    rdExtendedInterrupt = 0x89
+    rdQWordAddressSpace = 0x8A
+    # rdGpioConnection    = 0x8B
+  ResourceDescriptor = ref object
+    case kind: ResourceDescriptorKind
+    of rdReserved: discard
+    of rdIrqNoFlags: irqNoFlags: IrqNoFlagsDesc
+    of rdIrq: irq: IrqDesc
+    of rdIOPort: ioPort: IOPortDesc
+    of rdQWordAddressSpace: qwordAddrSpace: QWordAddrSpaceDesc
+    of rdDWordAddressSpace: dwordAddrSpace: DWordAddrSpaceDesc
+    of rdWordAddressSpace: wordAddrSpace: WordAddrSpaceDesc
+    of rdExtendedInterrupt: extInterrupt: ExtendedInterruptDesc
+    of rdMemory32Fixed: mem32Fixed: Memory32FixedDesc
+
+  ResourceUsage = enum
+    ruProducer = (0, "Producer")
+    ruConsumer = (1, "Consumer")
+
+  # Address Space Resource Type
   AddressSpaceResourceType = enum
     resMemoryRange    = (0, "MemoryRange")
     resIORange        = (1, "IORange")
     resBusNumberRange = (2, "BusNumberRange")
+
+  # Address Space General Flags
   DecodeType = enum
     decSubDecode = (0, "PosDecode")
     decPosDecode = (1, "SubDecode")
@@ -612,6 +699,13 @@ type
     minFixed   {.bitsize: 1}: IsMinFixed
     maxFixed   {.bitsize: 1}: IsMaxFixed
     reserved   {.bitsize: 4}: uint8
+
+  # Address Space Common Flags
+  AddressTranslation = enum
+    atTranslation = (0, "TypeTranslation")
+    atStatic      = (1, "TypeStatic")
+
+  # Memory Flags
   MemoryWriteStatus = enum
     mwsReadOnly  = (0, "ReadOnly")
     mwsReadWrite = (1, "ReadWrite")
@@ -625,30 +719,116 @@ type
     mtypAddressRangeReserved = (1, "AddressRangeReserved")
     mtypAddressRangeACPI     = (2, "AddressRangeACPI")
     mtypAddressRangeNVS      = (3, "AddressRangeNVS")
-  MemoryToIOTranslation = enum
-    mioTranslation = (0, "TypeTranslation")
-    mioStatic      = (1, "TypeStatic")
-  MemorySpecificFlags {.packed.} = object
+  MemoryFlags {.packed.} = object
     readWrite  {.bitsize: 1}: MemoryWriteStatus
     memAttrs   {.bitsize: 2}: MemoryResourceAttributes
     memType    {.bitsize: 2}: MemoryResourceType
-    memIOTrans {.bitsize: 1}: MemoryToIOTranslation
-    reserved   {.bitsize: 2}: int
-  DWordAddrSpaceDesc {.packed.} = ref object
-    resType        : AddressSpaceResourceType
-    addrSpaceFlags : AddressSpaceFlags
-    memFlags       : MemorySpecificFlags
-    granularity:                  uint32
-    minAddr:                      uint32
-    maxAddr:                      uint32
-    translationOffset:            uint32
-    addressLength:                uint32
-    # resourceSourceIndex:        uint8
-    # resourceSource:             string
+    memIOTrans {.bitsize: 1}: AddressTranslation
+    reserved   {.bitsize: 2}: uint8
 
-  ResourceUsage = enum
-    ruProducer = (0, "Producer")
-    ruConsumer = (1, "Consumer")
+  # IO Flags
+  IOFlags {.packed.} = object
+    rangeType   {.bitsize: 2}: IORangeType
+    reserved    {.bitsize: 2}: uint8
+    ioMemTrans  {.bitsize: 1}: AddressTranslation
+    sparseTrans {.bitsize: 1}: SparseTranslation
+    reserved2   {.bitsize: 2}: uint8
+  IORangeType = enum
+    reserved = (0, "Reserved")
+    nonISA = (1, "NonISARangesOnly")
+    isa = (2, "ISARangesOnly")
+    entire = (3, "EntireRange")
+  SparseTranslation = enum
+    stDense = (0, "DenseTranslation")
+    stSparse = (1, "SparseTranslation")
+
+  # Bus Flags
+  BusFlags = object
+    reserved: uint8
+
+  # 32-bit Fixed Memory Range
+  Memory32FixedDesc = ref object
+    readWrite: MemoryWriteStatus
+    base: uint32
+    length: uint32
+
+  # QWOrd Address Space
+  QWordAddrSpaceDesc = ref object
+    case resType: AddressSpaceResourceType
+    of resMemoryRange:
+      memFlags: MemoryFlags
+    of resIORange:
+      ioFlags: IOFlags
+    of resBusNumberRange:
+      busFlags: BusFlags
+    addrSpaceFlags : AddressSpaceFlags
+    granularity: uint64
+    minAddr: uint64
+    maxAddr: uint64
+    translationOffset: uint64
+    addressLength: uint64
+    # resourceSourceIndex: uint8
+    # resourceSource: string
+
+  # DWord Address Space
+  DWordAddrSpaceDesc {.packed.} = ref object
+    case resType: AddressSpaceResourceType
+    of resMemoryRange:
+      memFlags: MemoryFlags
+    of resIORange:
+      ioFlags: IOFlags
+    of resBusNumberRange:
+      busFlags: BusFlags
+    addrSpaceFlags : AddressSpaceFlags
+    granularity: uint32
+    minAddr: uint32
+    maxAddr: uint32
+    translationOffset: uint32
+    addressLength: uint32
+    # resourceSourceIndex: uint8
+    # resourceSource: string
+
+  # Word Address Space
+  WordAddrSpaceDesc = ref object
+    case resType: AddressSpaceResourceType
+    of resMemoryRange:
+      memFlags: MemoryFlags
+    of resIORange:
+      ioFlags: IOFlags
+    of resBusNumberRange:
+      busFlags: BusFlags
+    addrSpaceFlags: AddressSpaceFlags
+    granularity: uint16
+    minAddr: uint16
+    maxAddr: uint16
+    translationOffset: uint16
+    addressLength: uint16
+    # resourceSourceIndex: uint8
+    # resourceSource: string
+
+  IrqNoFlagsDesc = ref object
+    mask: uint16
+  IrqDesc = ref object
+    mask: uint16
+    flags: IrqFlags
+  IrqFlags {.packed.} = object
+    mode     {.bitsize: 1}: InterruptMode
+    ignored  {.bitsize: 2}: uint8
+    polarity {.bitsize: 1}: InterruptPolarity
+    sharing  {.bitsize: 1}: InterruptSharing
+    wakeCap  {.bitsize: 1}: InterruptWakeCap
+    reserved {.bitsize: 2}: uint8
+
+  ExtendedInterruptDesc {.packed.} = ref object
+    flags: ExtendedInterruptFlags
+    intNums: seq[uint32]
+  ExtendedInterruptFlags {.packed.} = object
+    resUsage {.bitsize: 1}: ResourceUsage
+    mode     {.bitsize: 1}: InterruptMode
+    polarity {.bitsize: 1}: InterruptPolarity
+    sharing  {.bitsize: 1}: InterruptSharing
+    wakeCap  {.bitsize: 1}: InterruptWakeCap
+    reserved {.bitsize: 3}: uint8
 
   InterruptMode = enum
     imLevelTriggered = (0, "LevelTriggered")
@@ -657,35 +837,21 @@ type
     ipActiveHigh = (0, "ActiveHigh")
     ipActiveLow  = (1, "ActiveLow")
   InterruptSharing = enum
-    isShared    = (0, "Shared")
-    isExclusive = (1, "Exclusive")
+    isExclusive = (0, "Exclusive")
+    isShared    = (1, "Shared")
   InterruptWakeCap = enum
     iwNotWakeCapable = (0, "NotWakeCapable")
     iwWakeCapable    = (1, "WakeCapable")
-  ExtendedInterruptFlags {.packed.} = object
-    resUsage {.bitsize: 1}: ResourceUsage
-    mode     {.bitsize: 1}: InterruptMode
-    polarity {.bitsize: 1}: InterruptPolarity
-    sharing  {.bitsize: 1}: InterruptSharing
-    wakeCap  {.bitsize: 1}: InterruptWakeCap
-    reserved {.bitsize: 3}: uint8
-  ExtendedInterruptDesc {.packed.} = ref object
-    flags: ExtendedInterruptFlags
-    intNums: seq[uint32]
 
-  ResourceDescriptorKind = enum
-    rdReserved          = 0x00
-    # rdGenericRegister   = 0x82
-    rdDWordAddressSpace = 0x87
-    # rdWordAddressSpace  = 0x88
-    rdExtendedInterrupt = 0x89
-    # rdQWordAddressSpace = 0x8A
-    # rdGpioConnection    = 0x8B
-  ResourceDescriptor = ref object
-    case kind: ResourceDescriptorKind
-    of rdReserved: discard
-    of rdDWordAddressSpace: dwordAddrSpace: DWordAddrSpaceDesc
-    of rdExtendedInterrupt: extInterrupt: ExtendedInterruptDesc
+  IOPortDesc = ref object
+    decode: IODecode
+    baseMin: uint16
+    baseMax: uint16
+    baseAlign: uint8
+    rangeLen: uint8
+  IODecode = enum
+    ioDecode10 = (0, "Decode10")
+    ioDecode16 = (1, "Decode16")
 
 
 # proc dumpHex*(bytes: openArray[uint8]) =
@@ -700,6 +866,7 @@ type
     ctxStack: seq[ParseContext]
     indent: int
     methods: Table[string, DefMethod]
+    scopeStack: seq[string] = @["\\"]
 
   ParseContext = object
     chunk: ptr UncheckedArray[byte]
@@ -716,14 +883,20 @@ proc exitContext(p: var Parser) =
   p.ctx = p.ctxStack.pop
   inc p.ctx.loc, oldCtx.len
 
-proc rewindContext(p: var Parser) =
-  p.ctx = p.ctxStack.pop
-
 template withContext(p: var Parser, len: uint32, body: untyped) =
   p.enterContext(len)
   body
   p.exitContext()
 
+proc scopedName(p: var Parser, name: string): string =
+  result = p.scopeStack[^1] & "." & name
+
+template withScope(p: var Parser, name: string, body: untyped) =
+  # debugln(&"Scope")
+  var absScope = if name.startsWith("\\"): name else: p.scopedName(name)
+  p.scopeStack.add(absScope)
+  body
+  discard p.scopeStack.pop
 
 # forward declarations ({.experimental: "codeReordering".} doesn't work with circular deps)
 proc termList(p: var Parser): TermList
@@ -742,6 +915,7 @@ proc defOpRegion(p: var Parser): Option[DefOpRegion]
 proc fieldList(p: var Parser): seq[FieldElement]
 proc namedField(p: var Parser): Option[NamedField]
 proc reservedField(p: var Parser): Option[ReservedField]
+proc defProcessor(p: var Parser): Option[DefProcessor]
 proc defMethod(p: var Parser): Option[DefMethod]
 proc defScope*(p: var Parser): Option[DefScope]
 proc pkgLength(p: var Parser): Option[(uint8, uint32)]
@@ -769,6 +943,7 @@ proc str(p: var Parser): Option[string]
 
 proc argObj(p: var Parser): Option[ArgObj]
 proc localObj(p: var Parser): Option[LocalObj]
+proc debugObj(p: var Parser): Option[DebugObj]
 
 proc expressionOpcode(p: var Parser): Option[ExpressionOpcode]
 proc refTypeOpcode(p: var Parser): Option[RefTypeOpcode]
@@ -780,24 +955,36 @@ proc defToBuffer(p: var Parser): Option[DefToBuffer]
 proc defSubtract(p: var Parser): Option[DefSubtract]
 proc defSizeOf(p: var Parser): Option[DefSizeOf]
 proc defStore(p: var Parser): Option[DefStore]
+proc defLAnd(p: var Parser): Option[DefLAnd]
 proc defLEqual(p: var Parser): Option[DefLEqual]
 proc defLLess(p: var Parser): Option[DefLLess]
+proc defLGreater(p: var Parser): Option[DefLGreater]
 proc defLNot(p: var Parser): Option[DefLNot]
 proc defLOr(p: var Parser): Option[DefLOr]
+proc defObjectType(p: var Parser): Option[DefObjectType]
 proc defOr(p: var Parser): Option[DefOr]
 proc defPackage(p: var Parser): Option[DefPackage]
 proc defIndex(p: var Parser): Option[DefIndex]
 proc defDerefOf(p: var Parser): Option[DefDerefOf]
 proc defIncrement(p: var Parser): Option[DefIncrement]
 proc defShiftLeft(p: var Parser): Option[DefShiftLeft]
+proc defShiftRight(p: var Parser): Option[DefShiftRight]
 proc methodInvocation(p: var Parser): Option[MethodInvocation]
 
 proc resourceDesc(p: var Parser): Option[ResourceDescriptor]
+proc irqNoFlagsDesc(p: var Parser): Option[IrqNoFlagsDesc]
+proc irqDesc(p: var Parser): Option[IrqDesc]
+proc ioPortDesc(p: var Parser): Option[IOPortDesc]
+proc memory32FixedDesc(p: var Parser): Option[Memory32FixedDesc]
+proc qwordAddrSpaceDesc(p: var Parser): Option[QWordAddrSpaceDesc]
 proc dwordAddrSpaceDesc(p: var Parser): Option[DWordAddrSpaceDesc]
+proc wordAddrSpaceDesc(p: var Parser): Option[WordAddrSpaceDesc]
 proc extendedInterruptDesc(p: var Parser): Option[ExtendedInterruptDesc]
 
 proc statementOpcode(p: var Parser): Option[StatementOpcode]
+proc defBreak(p: var Parser): Option[DefBreak]
 proc defIfElse(p: var Parser): Option[DefIfElse]
+proc defNotify(p: var Parser): Option[DefNotify]
 proc defRelease(p: var Parser): Option[DefRelease]
 proc defReturn(p: var Parser): Option[DefReturn]
 proc defWhile(p: var Parser): Option[DefWhile]
@@ -822,6 +1009,7 @@ proc peekWord(p: var Parser): Option[uint16] {.inline.}
 proc readByte(p: var Parser): Option[byte] {.inline.}
 proc readWord(p: var Parser): Option[uint16] {.inline.}
 proc readDWord(p: var Parser): Option[uint32] {.inline.}
+proc readQWord(p: var Parser): Option[uint64] {.inline.}
 proc readBuffer(p: var Parser, len: int): Option[seq[byte]] {.inline.}
 proc readBuffer(p: var Parser): Option[seq[byte]] {.inline.}
 
@@ -929,6 +1117,10 @@ proc namedObj(p: var Parser): Option[NamedObj] =
   if result.isSome:
     return
 
+  result = p.defProcessor().map(dp => NamedObj(kind: noDefProcessor, defProcessor: dp))
+  if result.isSome:
+    return
+
 proc defCreateDWordField(p: var Parser): Option[DefCreateDWordField] =
   # DefCreateDWordField := CreateDWordFieldOp SourceBuff ByteIndex NameString
   # debugln(&"DefCreateDWordField")
@@ -951,7 +1143,8 @@ proc defDevice(p: var Parser): Option[DefDevice] =
       p.withContext(pkgLen - bytesRead):
         let name = p.nameString()
         if name.isSome:
-          let termList = p.termList()
+          p.withScope(name.get):
+            let termList = p.termList()
           result = option DefDevice(name: name.get, body: termList)
 
 proc defMutex(p: var Parser): Option[DefMutex] =
@@ -1038,6 +1231,31 @@ proc reservedField(p: var Parser): Option[ReservedField] =
       let (_, bits) = pkgResult.get
       result = option ReservedField(bits: bits)
 
+proc defProcessor(p: var Parser): Option[DefProcessor] =
+  # DefProcessor := ProcessorOp PkgLength NameString ProcID PblkAddr PblkLen {TermList}
+  # debugln(&"DefProcessor")
+  if p.matchOpCodeWord(ocwProcessorOp):
+    var pkgResult = p.pkgLength()
+    if pkgResult.isSome:
+      let (bytesRead, pkgLen) = pkgResult.get
+      p.withContext(pkgLen - bytesRead):
+        let name = p.nameString()
+        if name.isSome:
+          let procId = p.readByte()
+          if procId.isSome:
+            let pblkAddr = p.readDWord()
+            if pblkAddr.isSome:
+              let pblkLen = p.readByte()
+              if pblkLen.isSome:
+                let termList = p.termList()
+                result = option DefProcessor(
+                  name: name.get,
+                  procId: procId.get,
+                  pblkAddr: pblkAddr.get,
+                  pblkLen: pblkLen.get,
+                  objects: termList
+                )
+
 proc defMethod(p: var Parser): Option[DefMethod] =
   # DefMethod := MethodOp PkgLength NameString MethodFlags TermList
   # debugln(&"DefMethod")
@@ -1050,14 +1268,15 @@ proc defMethod(p: var Parser): Option[DefMethod] =
         if name.isSome:
           let flags = p.readByte()
           if flags.isSome:
-            let terms = p.termList()
+            p.withScope(name.get):
+              let terms = p.termList()
             result = option DefMethod(
               name: name.get,
               flags: cast[MethodFlags](flags.get),
               terms: terms
             )
             # add the method to a table so that we can use it to resolve method invocations
-            p.methods[name.get] = result.get
+            p.methods[p.scopedName(name.get)] = result.get
 
 proc defScope*(p: var Parser): Option[DefScope] =
   # DefScope := ScopeOp PkgLength NameString TermList
@@ -1069,8 +1288,8 @@ proc defScope*(p: var Parser): Option[DefScope] =
       p.withContext(pkgLen - bytesRead):
         let name = p.nameString()
         if name.isSome:
-          let terms = p.termList()
-          # debugln(&"Scope ({name.get}), terms: {terms.len}")
+          p.withScope(name.get):
+            let terms = p.termList()
           result = option DefScope(name: name.get, terms: terms)
 
 proc pkgLength(p: var Parser): Option[(uint8, uint32)] =
@@ -1252,9 +1471,9 @@ proc superName(p: var Parser): Option[SuperName] =
   if result.isSome:
     return
 
-  # result = p.debugObj().map(dobj => SuperName(kind: snDebugObj, debugObj: dobj))
-  # if result.isSome:
-  #   return
+  result = p.debugObj().map(dobj => SuperName(kind: snDebugObj, debugObj: dobj))
+  if result.isSome:
+    return
 
   result = p.refTypeOpcode().map(rto => SuperName(kind: snRefTypeOpcode, refTypeOpcode: rto))
   if result.isSome:
@@ -1371,7 +1590,7 @@ proc str(p: var Parser): Option[string] =
 
     result = option s
 
-### ArgObj / LocalObj
+### ArgObj / LocalObj / DebugObj
 
 proc argObj(p: var Parser): Option[ArgObj] =
   # ArgObj := Arg0Op | Arg1Op | Arg2Op | Arg3Op | Arg4Op | Arg5Op | Arg6Op
@@ -1382,6 +1601,12 @@ proc localObj(p: var Parser): Option[LocalObj] =
   # LocalObj := Local0Op | Local1Op | Local2Op | Local3Op | Local4Op | Local5Op | Local6Op | Local7Op
   # debugln(&"LocalObj")
   result = p.byteRange(ocbLocal0Op.byte, ocbLocal7Op.byte).map(b => LocalObj(b))
+
+proc debugObj(p: var Parser): Option[DebugObj] =
+  # DebugObj := DebugOp
+  # debugln(&"DebugObj")
+  if p.matchOpCodeWord(ocwDebugOp):
+    result = option DebugObj()
 
 ### ExpressionOpcode
 
@@ -1428,11 +1653,19 @@ proc expressionOpcode(p: var Parser): Option[ExpressionOpcode] =
   if result.isSome:
     return
   
+  result = p.defLAnd().map(dla => ExpressionOpcode(kind: expLAnd, defLAnd: dla))
+  if result.isSome:
+    return
+
   result = p.defLEqual().map(dle => ExpressionOpcode(kind: expLEqual, defLEqual: dle))
   if result.isSome:
     return
 
   result = p.defLLess().map(dll => ExpressionOpcode(kind: expLLess, defLLess: dll))
+  if result.isSome:
+    return
+
+  result = p.defLGreater().map(dlg => ExpressionOpcode(kind: expLGreater, defLGreater: dlg))
   if result.isSome:
     return
   
@@ -1441,6 +1674,10 @@ proc expressionOpcode(p: var Parser): Option[ExpressionOpcode] =
     return
 
   result = p.defLOr().map(dlo => ExpressionOpcode(kind: expLOr, defLOr: dlo))
+  if result.isSome:
+    return
+
+  result = p.defObjectType().map(doo => ExpressionOpcode(kind: expObjectType, defObjectType: doo))
   if result.isSome:
     return
 
@@ -1465,6 +1702,10 @@ proc expressionOpcode(p: var Parser): Option[ExpressionOpcode] =
     return
 
   result = p.defShiftLeft().map(dsl => ExpressionOpcode(kind: expShiftLeft, defShiftLeft: dsl))
+  if result.isSome:
+    return
+
+  result = p.defShiftRight().map(dsr => ExpressionOpcode(kind: expShiftRight, defShiftRight: dsr))
   if result.isSome:
     return
 
@@ -1506,12 +1747,16 @@ proc defBuffer(p: var Parser): Option[DefBuffer] =
       p.withContext(pkgLen - bytesRead):
         let buffSize = p.termArg()
         if buffSize.isSome:
-          let resourceDesc = p.resourceDesc()
-          if resourceDesc.isSome:
+          var resources: seq[ResourceDescriptor]
+          var resourceDesc = p.resourceDesc()
+          while resourceDesc.isSome:
+            resources.add(resourceDesc.get)
+            resourceDesc = p.resourceDesc()
+          if resources.len > 0:
             result = option DefBuffer(
               size: buffSize.get,
-              kind: bpResourceDesc,
-              resourceDesc: resourceDesc.get,
+              kind: bpResources,
+              resources: resources,
             )
           else:
             let buffer = p.readBuffer()
@@ -1570,6 +1815,16 @@ proc defStore(p: var Parser): Option[DefStore] =
       if sn.isSome:
         result = option DefStore(src: ta.get, dst: sn.get)
 
+proc defLAnd(p: var Parser): Option[DefLAnd] =
+  # DefLAnd := LAndOp Operand Operand
+  # debugln(&"DefLAnd")
+  if p.matchOpCodeByte(ocbLAndOp):
+    let op1 = p.operand()
+    if op1.isSome:
+      let op2 = p.operand()
+      if op2.isSome:
+        result = option DefLAnd(operand1: op1.get, operand2: op2.get)
+
 proc defLEqual(p: var Parser): Option[DefLEqual] =
   # DefLEqual := LEqualOp Operand Operand
   # debugln(&"DefLEqual")
@@ -1590,6 +1845,16 @@ proc defLLess(p: var Parser): Option[DefLLess] =
       if op2.isSome:
         result = option DefLLess(operand1: op1.get, operand2: op2.get)
 
+proc defLGreater(p: var Parser): Option[DefLGreater] =
+  # DefLGreater := LGreaterOp Operand Operand
+  # debugln(&"DefLGreater")
+  if p.matchOpCodeByte(ocbLGreaterOp):
+    let op1 = p.operand()
+    if op1.isSome:
+      let op2 = p.operand()
+      if op2.isSome:
+        result = option DefLGreater(operand1: op1.get, operand2: op2.get)
+
 proc defLNot(p: var Parser): Option[DefLNot] =
   # DefLNot := LNotOp Operand
   # debugln(&"DefLNot")
@@ -1605,6 +1870,30 @@ proc defLOr(p: var Parser): Option[DefLOr] =
       let op2 = p.operand()
       if op2.isSome:
         result = option DefLOr(operand1: op1.get, operand2: op2.get)
+
+proc defObjectType(p: var Parser): Option[DefObjectType] =
+  # DefObjectType := ObjectTypeOp <SimpleName | DebugObj | DefRefOf | DefDerefOf | DefIndex>
+  # debugln(&"DefObjectType")
+  if p.matchOpCodeByte(ocbObjectTypeOp):
+    result = p.simpleName().map(name => DefObjectType(kind: otSimpleName, name: name))
+    if result.isSome:
+      return
+
+    result = p.debugObj().map(dobj => DefObjectType(kind: otDebugObj, debugObj: dobj))
+    if result.isSome:
+      return
+
+    # result = p.defRefOf().map(ref => DefObjectType(kind: otDefRefOf, ref: ref))
+    # if result.isSome:
+    #   return
+
+    result = p.defDerefOf().map(deref => DefObjectType(kind: otDerefOf, derefOf: deref))
+    if result.isSome:
+      return
+
+    result = p.defIndex().map(index => DefObjectType(kind: otIndex, index: index))
+    if result.isSome:
+      return
 
 proc defOr(p: var Parser): Option[DefOr] =
   # DefOr := OrOp Operand Operand Target
@@ -1687,6 +1976,19 @@ proc defShiftLeft(p: var Parser): Option[DefShiftLeft] =
         if target.isSome:
           result = option DefShiftLeft(operand: op.get, count: shiftCount.get, target: target.get)
 
+proc defShiftRight(p: var Parser): Option[DefShiftRight] =
+  # DefShiftRight := ShiftRightOp Operand ShiftCount Target
+  #   ShiftCount := TermArg
+  # debugln(&"DefShiftRight")
+  if p.matchOpCodeByte(ocbShiftRightOp):
+    let op = p.operand()
+    if op.isSome:
+      let shiftCount = p.termArg()
+      if shiftCount.isSome:
+        let target = p.target()
+        if target.isSome:
+          result = option DefShiftRight(operand: op.get, count: shiftCount.get, target: target.get)
+
 proc methodInvocation(p: var Parser): Option[MethodInvocation] =
   # MethodInvocation := NameString TermArgList
   #   TermArgList := Nothing | <TermArg TermArgList>
@@ -1696,14 +1998,19 @@ proc methodInvocation(p: var Parser): Option[MethodInvocation] =
   # get method name
   let name = p.nameString()
   if name.isSome:
+    let name = name.get
     # check if method is defined
-    let m = p.methods.getOrDefault(name.get, nil)
+    var scopedMethodName = name
+    if not name.startsWith("\\"):
+      scopedMethodName = p.scopedName(name)
+    let m = p.methods.getOrDefault(scopedMethodName, nil)
+
     if m.isNil:
       # not a method, rewind context
       p.ctx.loc = loc
       return
 
-    # get method args
+    # # get method args
     var args = newSeqOfCap[TermArg](m.flags.argCount)
     for i in 0.uint8 ..< m.flags.argCount:
       let arg = p.termArg()
@@ -1713,18 +2020,157 @@ proc methodInvocation(p: var Parser): Option[MethodInvocation] =
         return
       args.add(arg.get)
 
-    result = option MethodInvocation(name: name.get, args: args)
+    result = option MethodInvocation(name: name, args: args)
 
 ### Resource Descriptors
 
 proc resourceDesc(p: var Parser): Option[ResourceDescriptor] =
+  result = p.irqNoFlagsDesc().map(irqnfd => ResourceDescriptor(kind: rdIrqNoFlags, irqNoFlags: irqnfd))
+  if result.isSome:
+    return
+
+  result = p.irqDesc().map(irqd => ResourceDescriptor(kind: rdIrq, irq: irqd))
+  if result.isSome:
+    return
+
+  result = p.ioPortDesc().map(iopd => ResourceDescriptor(kind: rdIoPort, ioPort: iopd))
+  if result.isSome:
+    return
+
+  result = p.memory32FixedDesc().map(m32fd => ResourceDescriptor(kind: rdMemory32Fixed, mem32Fixed: m32fd))
+  if result.isSome:
+    return
+
+  result = p.qwordAddrSpaceDesc().map(qwas => ResourceDescriptor(kind: rdQWordAddressSpace, qwordAddrSpace: qwas))
+  if result.isSome:
+    return
+
   result = p.dwordAddrSpaceDesc().map(dwas => ResourceDescriptor(kind: rdDWordAddressSpace, dwordAddrSpace: dwas))
+  if result.isSome:
+    return
+
+  result = p.wordAddrSpaceDesc().map(was => ResourceDescriptor(kind: rdWordAddressSpace, wordAddrSpace: was))
   if result.isSome:
     return
 
   result = p.extendedInterruptDesc().map(eid => ResourceDescriptor(kind: rdExtendedInterrupt, extInterrupt: eid))
   if result.isSome:
     return
+
+proc irqNoFlagsDesc(p: var Parser): Option[IrqNoFlagsDesc] =
+  # debugln(&"IrqNoFlags")
+  if p.matchByte(rdIrqNoFlags.byte):
+    let mask = p.readWord()
+    if mask.isSome:
+      result = option IrqNoFlagsDesc(mask: mask.get)
+
+proc irqDesc(p: var Parser): Option[IrqDesc] =
+  # debugln(&"Irq")
+  if p.matchByte(rdIrq.byte):
+    let mask = p.readWord()
+    if mask.isSome:
+      let flags = p.readByte()
+      if flags.isSome:
+        result = option IrqDesc(
+          mask: mask.get,
+          flags: cast[IrqFlags](flags.get),
+        )
+
+proc ioPortDesc(p: var Parser): Option[IoPortDesc] =
+  # debugln(&"IoPort")
+  if p.matchByte(rdIoPort.byte):
+    let info = p.readByte()
+    if info.isSome:
+      let decode = info.get and 1.uint8
+      let baseMin = p.readWord()
+      if baseMin.isSome:
+        let baseMax = p.readWord()
+        if baseMax.isSome:
+          let baseAlign = p.readByte()
+          if baseAlign.isSome:
+            let rangeLen = p.readByte()
+            if rangeLen.isSome:
+              result = option IOPortDesc(
+                decode: cast[IODecode](decode),
+                baseMin: baseMin.get,
+                baseMax: baseMax.get,
+                baseAlign: baseAlign.get,
+                rangeLen: rangeLen.get,
+              )
+
+proc memory32FixedDesc(p: var Parser): Option[Memory32FixedDesc] =
+  # debugln(&"Memory32Fixed")
+  if p.matchByte(rdMemory32Fixed.byte):
+    let len = p.readWord()
+    if len.isSome:
+      let info = p.readByte()
+      if info.isSome:
+        let readWrite = info.get and 1.uint8
+        let rangeBase = p.readDWord()
+        if rangeBase.isSome:
+          let rangeLength = p.readDWord()
+          if rangeLength.isSome:
+            result = option Memory32FixedDesc(
+              readWrite: cast[MemoryWriteStatus](readWrite),
+              base: rangeBase.get,
+              length: rangeLength.get
+            )
+
+proc qwordAddrSpaceDesc(p: var Parser): Option[QWordAddrSpaceDesc] =
+  # debugln(&"QWordAddressSpace")
+  if p.matchByte(rdQWordAddressSpace.byte):
+    let len = p.readWord()
+    if len.isSome:
+      let resType = p.readByte()
+      if resType.isSome:
+        let addrSpaceFlags = p.readByte()
+        if addrSpaceFlags.isSome:
+          let resTypeFlags = p.readByte()
+          if resTypeFlags.isSome:
+            let granularity = p.readQWord()
+            if granularity.isSome:
+              let addrRangeMin = p.readQWord()
+              if addrRangeMin.isSome:
+                let addrRangeMax = p.readQWord()
+                if addrRangeMax.isSome:
+                  let addrTranslationOffset = p.readQWord()
+                  if addrTranslationOffset.isSome:
+                    let addrLen = p.readQWord()
+                    if addrLen.isSome:
+                      case cast[AddressSpaceResourceType](resType.get):
+                      of resMemoryRange:
+                        result = option QWordAddrSpaceDesc(
+                          resType: resMemoryRange,
+                          addrSpaceFlags: cast[AddressSpaceFlags](addrSpaceFlags.get),
+                          memFlags: cast[MemoryFlags](resTypeFlags.get),
+                          granularity: granularity.get,
+                          minAddr: addrRangeMin.get,
+                          maxAddr: addrRangeMax.get,
+                          translationOffset: addrTranslationOffset.get,
+                          addressLength: addrLen.get
+                        )
+                      of resIoRange:
+                        result = option QWordAddrSpaceDesc(
+                          resType: resIoRange,
+                          addrSpaceFlags: cast[AddressSpaceFlags](addrSpaceFlags.get),
+                          ioFlags: cast[IOFlags](resTypeFlags.get),
+                          granularity: granularity.get,
+                          minAddr: addrRangeMin.get,
+                          maxAddr: addrRangeMax.get,
+                          translationOffset: addrTranslationOffset.get,
+                          addressLength: addrLen.get
+                        )
+                      of resBusNumberRange:
+                        result = option QWordAddrSpaceDesc(
+                          resType: resBusNumberRange,
+                          addrSpaceFlags: cast[AddressSpaceFlags](addrSpaceFlags.get),
+                          busFlags: cast[BusFlags](resTypeFlags.get),
+                          granularity: granularity.get,
+                          minAddr: addrRangeMin.get,
+                          maxAddr: addrRangeMax.get,
+                          translationOffset: addrTranslationOffset.get,
+                          addressLength: addrLen.get
+                        )
 
 proc dwordAddrSpaceDesc(p: var Parser): Option[DWordAddrSpaceDesc] =
   # debugln(&"DWordAddressSpace")
@@ -1735,8 +2181,8 @@ proc dwordAddrSpaceDesc(p: var Parser): Option[DWordAddrSpaceDesc] =
       if resType.isSome:
         let addrSpaceFlags = p.readByte()
         if addrSpaceFlags.isSome:
-          let memFlags = p.readByte()
-          if memFlags.isSome:
+          let resTypeFlags = p.readByte()
+          if resTypeFlags.isSome:
             let granularity = p.readDWord()
             if granularity.isSome:
               let addrRangeMin = p.readDWord()
@@ -1747,16 +2193,96 @@ proc dwordAddrSpaceDesc(p: var Parser): Option[DWordAddrSpaceDesc] =
                   if addrTranslationOffset.isSome:
                     let addrLen = p.readDWord()
                     if addrLen.isSome:
-                      result = option DWordAddrSpaceDesc(
-                        resType: cast[AddressSpaceResourceType](resType.get),
-                        addrSpaceFlags: cast[AddressSpaceFlags](addrSpaceFlags.get),
-                        memFlags: cast[MemorySpecificFlags](memFlags.get),
-                        granularity: granularity.get,
-                        minAddr: addrRangeMin.get,
-                        maxAddr: addrRangeMax.get,
-                        translationOffset: addrTranslationOffset.get,
-                        addressLength: addrLen.get
-                      )
+                      case cast[AddressSpaceResourceType](resType.get):
+                      of resMemoryRange:
+                        result = option DWordAddrSpaceDesc(
+                          resType: resMemoryRange,
+                          addrSpaceFlags: cast[AddressSpaceFlags](addrSpaceFlags.get),
+                          memFlags: cast[MemoryFlags](resTypeFlags.get),
+                          granularity: granularity.get,
+                          minAddr: addrRangeMin.get,
+                          maxAddr: addrRangeMax.get,
+                          translationOffset: addrTranslationOffset.get,
+                          addressLength: addrLen.get
+                        )
+                      of resIoRange:
+                        result = option DWordAddrSpaceDesc(
+                          resType: resIoRange,
+                          addrSpaceFlags: cast[AddressSpaceFlags](addrSpaceFlags.get),
+                          ioFlags: cast[IOFlags](resTypeFlags.get),
+                          granularity: granularity.get,
+                          minAddr: addrRangeMin.get,
+                          maxAddr: addrRangeMax.get,
+                          translationOffset: addrTranslationOffset.get,
+                          addressLength: addrLen.get
+                        )
+                      of resBusNumberRange:
+                        result = option DWordAddrSpaceDesc(
+                          resType: resBusNumberRange,
+                          addrSpaceFlags: cast[AddressSpaceFlags](addrSpaceFlags.get),
+                          busFlags: cast[BusFlags](resTypeFlags.get),
+                          granularity: granularity.get,
+                          minAddr: addrRangeMin.get,
+                          maxAddr: addrRangeMax.get,
+                          translationOffset: addrTranslationOffset.get,
+                          addressLength: addrLen.get
+                        )
+
+proc wordAddrSpaceDesc(p: var Parser): Option[WordAddrSpaceDesc] =
+  # debugln(&"WordAddressSpace")
+  if p.matchByte(rdWordAddressSpace.byte):
+    let len = p.readWord()
+    if len.isSome:
+      let resType = p.readByte()
+      if resType.isSome:
+        let addrSpaceFlags = p.readByte()
+        if addrSpaceFlags.isSome:
+          let resTypeFlags = p.readByte()
+          if resTypeFlags.isSome:
+            let granularity = p.readWord()
+            if granularity.isSome:
+              let addrRangeMin = p.readWord()
+              if addrRangeMin.isSome:
+                let addrRangeMax = p.readWord()
+                if addrRangeMax.isSome:
+                  let addrTranslationOffset = p.readWord()
+                  if addrTranslationOffset.isSome:
+                    let addrLen = p.readWord()
+                    if addrLen.isSome:
+                      case cast[AddressSpaceResourceType](resType.get):
+                      of resMemoryRange:
+                        result = option WordAddrSpaceDesc(
+                          resType: resMemoryRange,
+                          addrSpaceFlags: cast[AddressSpaceFlags](addrSpaceFlags.get),
+                          memFlags: cast[MemoryFlags](resTypeFlags.get),
+                          granularity: granularity.get,
+                          minAddr: addrRangeMin.get,
+                          maxAddr: addrRangeMax.get,
+                          translationOffset: addrTranslationOffset.get,
+                          addressLength: addrLen.get
+                        )
+                      of resIoRange:
+                        result = option WordAddrSpaceDesc(
+                          resType: resIoRange,
+                          addrSpaceFlags: cast[AddressSpaceFlags](addrSpaceFlags.get),
+                          ioFlags: cast[IOFlags](resTypeFlags.get),
+                          granularity: granularity.get,
+                          minAddr: addrRangeMin.get,
+                          maxAddr: addrRangeMax.get,
+                          translationOffset: addrTranslationOffset.get,
+                          addressLength: addrLen.get
+                        )
+                      of resBusNumberRange:
+                        result = option WordAddrSpaceDesc(
+                          resType: resBusNumberRange,
+                          addrSpaceFlags: cast[AddressSpaceFlags](addrSpaceFlags.get),
+                          busFlags: cast[BusFlags](resTypeFlags.get),
+                          granularity: granularity.get,
+                          minAddr: addrRangeMin.get,
+                          maxAddr: addrRangeMax.get,
+                          translationOffset: addrTranslationOffset.get,
+                          addressLength: addrLen.get
+                        )
 
 proc extendedInterruptDesc(p: var Parser): Option[ExtendedInterruptDesc] =
   # debugln(&"ExtendedInterrupt")
@@ -1784,7 +2310,15 @@ proc statementOpcode(p: var Parser): Option[StatementOpcode] =
   #   := DefBreak | DefBreakPoint | DefContinue | DefFatal | DefIfElse | DefNoop | DefNotify
   #    | DefRelease | DefReset | DefReturn | DefSignal | DefSleep | DefStall | DefWhile
   # debugln(&"StatementOpcode")
+  result = p.defBreak().map(db => StatementOpcode(kind: stmtBreak, defBreak: db))
+  if result.isSome:
+    return
+
   result = p.defIfElse().map(die => StatementOpcode(kind: stmtIfElse, defIfElse: die))
+  if result.isSome:
+    return
+
+  result = p.defNotify().map(dn => StatementOpcode(kind: stmtNotify, defNotify: dn))
   if result.isSome:
     return
 
@@ -1799,6 +2333,12 @@ proc statementOpcode(p: var Parser): Option[StatementOpcode] =
   result = p.defWhile().map(dw => StatementOpcode(kind: stmtWhile, defWhile: dw))
   if result.isSome:
     return
+
+proc defBreak(p: var Parser): Option[DefBreak] =
+  # DefBreak := BreakOp
+  # debugln(&"DefBreak")
+  if p.matchOpCodeByte(ocbBreakOp):
+    result = option DefBreak()
 
 proc defIfElse(p: var Parser): Option[DefIfElse] =
   # DefIfElse := IfOp PkgLength Predicate TermList DefElse
@@ -1829,6 +2369,18 @@ proc defIfElse(p: var Parser): Option[DefIfElse] =
           p.withContext(pkgLen - bytesRead):
             elseBody = option p.termList()
             result = option DefIfElse(predicate: predicate.get, ifBody: ifBody, elseBody: elseBody)
+
+proc defNotify(p: var Parser): Option[DefNotify] =
+  # DefNotify := NotifyOp NotifyObject NotifyValue
+  #   NotifyObject := SuperName
+  #   NotifyValue := TermArg => Integer
+  # debugln(&"DefNotify")
+  if p.matchOpCodeByte(ocbNotifyOp):
+    let obj = p.superName()
+    if obj.isSome:
+      let val = p.termArg()
+      if val.isSome:
+        result = option DefNotify(obj: obj.get, value: val.get)
 
 proc defRelease(p: var Parser): Option[DefRelease] =
   # DefRelease := ReleaseOp MutexObject
@@ -1953,6 +2505,13 @@ proc readDWord(p: var Parser): Option[uint32] {.inline.} =
     let hi = p.readWord()
     if hi.isSome:
       result = option (lo.get.uint32 or (hi.get.uint32 shl 16))
+
+proc readQWord(p: var Parser): Option[uint64] {.inline.} =
+  let lo = p.readDWord()
+  if lo.isSome:
+    let hi = p.readDWord()
+    if hi.isSome:
+      result = option (lo.get.uint64 or (hi.get.uint64 shl 32))
 
 proc readBuffer(p: var Parser, len: int): Option[seq[byte]] {.inline.} =
   if p.ctx.loc + len <= p.ctx.len:

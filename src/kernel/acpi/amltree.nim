@@ -33,6 +33,7 @@ privateAccess(NamedField)
 privateAccess(ReservedField)
 privateAccess(DefMethod)
 privateAccess(MethodFlags)
+privateAccess(DefProcessor)
 
 privateAccess(ExpressionOpcode)
 privateAccess(RefTypeOpcode)
@@ -44,10 +45,13 @@ privateAccess(DefToBuffer)
 privateAccess(DefSubtract)
 privateAccess(DefSizeOf)
 privateAccess(DefStore)
+privateAccess(DefLAnd)
 privateAccess(DefLEqual)
 privateAccess(DefLLess)
+privateAccess(DefLGreater)
 privateAccess(DefLNot)
 privateAccess(DefLOr)
+privateAccess(DefObjectType)
 privateAccess(DefOr)
 privateAccess(PackageElement)
 privateAccess(DefPackage)
@@ -55,17 +59,27 @@ privateAccess(DefIndex)
 privateAccess(DefDerefOf)
 privateAccess(DefIncrement)
 privateAccess(DefShiftLeft)
+privateAccess(DefShiftRight)
 privateAccess(MethodInvocation)
 
 privateAccess(ResourceDescriptor)
+privateAccess(IrqNoFlagsDesc)
+privateAccess(IrqDesc)
+privateAccess(IrqFlags)
+privateAccess(IOPortDesc)
+privateAccess(Memory32FixedDesc)
 privateAccess(AddressSpaceFlags)
-privateAccess(MemorySpecificFlags)
+privateAccess(MemoryFlags)
+privateAccess(IOFlags)
+privateAccess(QWordAddrSpaceDesc)
 privateAccess(DWordAddrSpaceDesc)
+privateAccess(WordAddrSpaceDesc)
 privateAccess(ExtendedInterruptDesc)
 privateAccess(ExtendedInterruptFlags)
 
 privateAccess(StatementOpcode)
 privateAccess(DefIfElse)
+privateAccess(DefNotify)
 privateAccess(DefRelease)
 privateAccess(DefReturn)
 privateAccess(DefWhile)
@@ -97,6 +111,7 @@ proc visit(dataObject: DataObject)
 proc visit(compData: ComputationalData)
 proc visit(constObj: ConstObj)
 proc visit(defMethod: DefMethod)
+proc visit(defProcessor: DefProcessor)
 
 proc visit(expr: ExpressionOpcode)
 proc visit(rto: RefTypeOpcode)
@@ -108,30 +123,43 @@ proc visit(defToBuffer: DefToBuffer)
 proc visit(defSubtract: DefSubtract)
 proc visit(defSizeOf: DefSizeOf)
 proc visit(defStore: DefStore)
+proc visit(defLAnd: DefLAnd)
 proc visit(defLEqual: DefLEqual)
 proc visit(defLLess: DefLLess)
+proc visit(defLGreater: DefLGreater)
 proc visit(defLNot: DefLNot)
 proc visit(defLOr: DefLOr)
+proc visit(defObjectType: DefObjectType)
 proc visit(defOr: DefOr)
 proc visit(defPackage: DefPackage)
 proc visit(defIndex: DefIndex)
 proc visit(defDerefOf: DefDerefOf)
 proc visit(defIncrement: DefIncrement)
 proc visit(defShiftLeft: DefShiftLeft)
+proc visit(defShiftRight: DefShiftRight)
 proc visit(methodInvocation: MethodInvocation)
 
 proc visit(resourceDesc: ResourceDescriptor)
+proc visit(irqNoFlags: IrqNoFlagsDesc)
+proc visit(irq: IrqDesc)
+proc visit(ioPort: IOPortDesc)
+proc visit(memory32Fixed: Memory32FixedDesc)
+proc visit(qwordAddrSpace: QWordAddrSpaceDesc)
 proc visit(dwordAddrSpace: DWordAddrSpaceDesc)
+proc visit(wordAddrSpace: WordAddrSpaceDesc)
 proc visit(extInterrupt: ExtendedInterruptDesc)
 
 proc visit(stmt: StatementOpcode)
+proc visit(defBreak: DefBreak)
 proc visit(defIfElse: DefIfElse)
+proc visit(defNotify: DefNotify)
 proc visit(defRelease: DefRelease)
 proc visit(defReturn: DefReturn)
 proc visit(defWhile: DefWhile)
 
 proc visit(argObj: ArgObj)
 proc visit(localObj: LocalObj)
+proc visit(debugObj: DebugObj)
 
 proc visit(termArg: TermArg)
 proc visit(target: Target)
@@ -236,6 +264,8 @@ proc visit(namedObj: NamedObj) =
     visit(namedObj.defField)
   of noDefMethod:
     visit(namedObj.defMethod)
+  of noDefProcessor:
+    visit(namedObj.defProcessor)
 
 ## NamespaceModifierObj kinds
 ##   DefAlias | DefName | DefScope
@@ -305,6 +335,13 @@ proc visit(defMethod: DefMethod) =
     visit(defMethod.terms)
   indprintln("}")
 
+proc visit(defProcessor: DefProcessor) =
+  println(&"Processor ({defProcessor.name}, {defProcessor.procId}, {defProcessor.pblkAddr})")
+  indent:
+    visit(defProcessor.objects)
+  indprintln("}")
+
+
 ## TermArg kinds
 ##   ExpressionOpcode | DataObject | ArgObj | LocalObj | NamedString
 
@@ -333,14 +370,20 @@ proc visit(expr: ExpressionOpcode) =
     visit(expr.defSizeOf)
   of expStore:
     visit(expr.defStore)
+  of expLAnd:
+    visit(expr.defLAnd)
   of expLEqual:
     visit(expr.defLEqual)
   of expLLess:
     visit(expr.defLLess)
+  of expLGreater:
+    visit(expr.defLGreater)
   of expLNot:
     visit(expr.defLNot)
   of expLOr:
     visit(expr.defLOr)
+  of expObjectType:
+    visit(expr.defObjectType)
   of expOr:
     visit(expr.defOr)
   of expPackage:
@@ -353,6 +396,8 @@ proc visit(expr: ExpressionOpcode) =
     visit(expr.defIncrement)
   of expShiftLeft:
     visit(expr.defShiftLeft)
+  of expShiftRight:
+    visit(expr.defShiftRight)
   of expMethodInvocation:
     visit(expr.call)
 
@@ -390,8 +435,12 @@ proc visit(defBuffer: DefBuffer) =
             print(" ")
         print(&")")
 
-    of bpResourceDesc:
-      visit(defBuffer.resourceDesc)
+    of bpResources:
+      noinline:
+        println("ResourceTemplate () {")
+        for resource in defBuffer.resources:
+          visit(resource)
+      indprintln("}")
 
 proc visit(defToHexString: DefToHexString) =
   print(&"ToHexString (")
@@ -433,6 +482,14 @@ proc visit(defStore: DefStore) =
     visit(defStore.dst)
   println(&")")
 
+proc visit(defLAnd: DefLAnd) =
+  print(&"LAnd (")
+  inline:
+    visit(defLAnd.operand1)
+    print(&", ")
+    visit(defLAnd.operand2)
+  println(&")")
+
 proc visit(defLEqual: DefLEqual) =
   print(&"LEqual (")
   inline:
@@ -449,6 +506,14 @@ proc visit(defLLess: DefLLess) =
     visit(defLLess.operand2)
   println(&")")
 
+proc visit(defLGreater: DefLGreater) =
+  print(&"LGreater (")
+  inline:
+    visit(defLGreater.operand1)
+    print(&", ")
+    visit(defLGreater.operand2)
+  println(&")")
+
 proc visit(defLNot: DefLNot) =
   print(&"LNot (")
   inline:
@@ -463,6 +528,19 @@ proc visit(defLOr: DefLOr) =
     visit(defLOr.operand2)
   println(&")")
 
+proc visit(defObjectType: DefObjectType) =
+  case defObjectType.kind:
+  of otSimpleName:
+    visit(defObjectType.name)
+  of otDebugObj:
+    visit(defObjectType.debugObj)
+  # of otRefOf:
+  #   visit(defObjectType.refOf)
+  of otDerefOf:
+    visit(defObjectType.derefOf)
+  of otIndex:
+    visit(defObjectType.index)
+  
 proc visit(defOr: DefOr) =
   print(&"Or (")
   inline:
@@ -537,6 +615,17 @@ proc visit(defShiftLeft: DefShiftLeft) =
       visit(defShiftLeft.target)
   println(&")")
 
+proc visit(defShiftRight: DefShiftRight) =
+  print(&"ShiftRight (")
+  inline:
+    visit(defShiftRight.operand)
+    print(&", ")
+    visit(defShiftRight.count)
+    if defShiftRight.target.kind != tgNullName:
+      print(&", ")
+      visit(defShiftRight.target)
+  println(&")")
+
 proc visit(methodInvocation: MethodInvocation) =
   print(&"{methodInvocation.name} (")
   inline:
@@ -550,17 +639,102 @@ proc visit(methodInvocation: MethodInvocation) =
 
 proc visit(resourceDesc: ResourceDescriptor) =
   noinline:
-    println("ResourceTemplate () {")
     indent:
       case resourceDesc.kind:
       of rdReserved: discard
+      of rdIrqNoFlags:
+        indprint("")
+        visit(resourceDesc.irqNoFlags)
+      of rdIrq:
+        indprint("")
+        visit(resourceDesc.irq)
+      of rdIOPort:
+        indprint("")
+        visit(resourceDesc.ioPort)
+      of rdMemory32Fixed:
+        indprint("")
+        visit(resourceDesc.mem32Fixed)
+      of rdQWordAddressSpace:
+        indprint("")
+        visit(resourceDesc.qwordAddrSpace)
       of rdDWordAddressSpace:
         indprint("")
         visit(resourceDesc.dwordAddrSpace)
+      of rdWordAddressSpace:
+        indprint("")
+        visit(resourceDesc.wordAddrSpace)
       of rdExtendedInterrupt:
         indprint("")
         visit(resourceDesc.extInterrupt)
+
+proc visit(memory32Fixed: Memory32FixedDesc) =
+  println("Memory32Fixed (")
+  indent:
+    indprintln(&"{memory32Fixed.readWrite: 20} # (_RW ) Write Status")
+    indprintln(&"0x{memory32Fixed.base: <18x} # (_BAS) Range Base Address")
+    indprintln(&"0x{memory32Fixed.length: <18x} # (_LEN) Range Length")
   indprintln("}")
+
+proc visit(mask: uint16) =
+  var first = true
+  for i in 0..15:
+    if (mask and uint16(1 shl i)) != 0:
+      if first:
+        first = false
+      else:
+        print(&", ")
+      print(&"{i}")
+
+proc visit(irqNoFlags: IrqNoFlagsDesc) =
+  print("IRQNoFlags {")
+  visit(irqNoFlags.mask)
+  println("}")
+
+proc visit(irq: IrqDesc) =
+  print(&"IRQ (")
+  print(&"{irq.flags.mode}")
+  print(&", {irq.flags.polarity}")
+  print(&", {irq.flags.sharing}")
+  print(&", {irq.flags.wakeCap}")
+  print(" {")
+  visit(irq.mask)
+  println("})")
+
+proc visit(ioPort: IOPortDesc) =
+  println("IOPort (")
+  indent:
+    indprintln(&"  {ioPort.decode: <20} # (_DEC) Decode Type")
+    indprintln(&", 0x{ioPort.baseMin: <18x} # (_MIN) Range Min Base Address")
+    indprintln(&", 0x{ioPort.baseMax: <18x} # (_MAX) Range Max Base Address")
+    indprintln(&", 0x{ioPort.baseAlign: <18x} # (_ALN) Base Address Alignment")
+    indprintln(&", 0x{ioPort.rangeLen: <18x} # (_LEN) Range Length")
+  indprintln("}")
+
+proc visit(qwordAddrSpace: QWordAddrSpaceDesc) =
+  println("QWordSpace (")
+  indent:
+    indprintln(&"  {qwordAddrSpace.resType: 20} # (_RT ) ResourceType")
+    indprintln(&", {qwordAddrSpace.addrSpaceFlags.decodeType: 20} # (_DEC) Decode")
+    indprintln(&", {qwordAddrSpace.addrSpaceFlags.minFixed: 20} # (_MIF) MinType")
+    indprintln(&", {qwordAddrSpace.addrSpaceFlags.maxFixed: 20} # (_MAF) MaxType")
+    case qwordAddrSpace.resType:
+    of resMemoryRange:
+      indprintln(&", {qwordAddrSpace.memFlags.readWrite: 20} # (_TSF._RW ) Memory: Write Status")
+      indprintln(&", {qwordAddrSpace.memFlags.memAttrs: 20} # (_TSF._MEM) Memory: Cacheability")
+      indprintln(&", {qwordAddrSpace.memFlags.memType: 20} # (_TSF._MTP) Memory: Type")
+      indprintln(&", {qwordAddrSpace.memFlags.memIOTrans: 20} # (_TFS._TTP) Memory: Memory to I/O Translation")
+    of resIORange:
+      indprintln(&", {qwordAddrSpace.ioFlags.rangeType: 20} # (_TSF._RNG) IO: Range Type")
+      indprintln(&", {qwordAddrSpace.ioFlags.ioMemTrans: 20} # (_TSF._TTP) IO: I/O to Memory Translation")
+      indprintln(&", {qwordAddrSpace.ioFlags.sparseTrans: 20} # (_TSF._TRS) IO: Sparse Translation")
+    of resBusNumberRange:
+      discard
+    indprintln(&", {qwordAddrSpace.granularity: <20x} # (_GRA) AddressGranularity")
+    indprintln(&", 0x{qwordAddrSpace.minAddr: <18x} # (_MIN) MinAddress")
+    indprintln(&", 0x{qwordAddrSpace.maxAddr: <18x} # (_MAX) MaxAddress")
+    indprintln(&", 0x{qwordAddrSpace.translationOffset: <18x} # (_TRA) AddressTranslation (Offset)")
+    indprintln(&", 0x{qwordAddrSpace.addressLength: <18x} # (_LEN) AddressLength")
+  indprintln(")")
 
 proc visit(dwordAddrSpace: DWordAddrSpaceDesc) =
   println("DWordSpace (")
@@ -569,15 +743,49 @@ proc visit(dwordAddrSpace: DWordAddrSpaceDesc) =
     indprintln(&", {dwordAddrSpace.addrSpaceFlags.decodeType: 20} # (_DEC) Decode")
     indprintln(&", {dwordAddrSpace.addrSpaceFlags.minFixed: 20} # (_MIF) MinType")
     indprintln(&", {dwordAddrSpace.addrSpaceFlags.maxFixed: 20} # (_MAF) MaxType")
-    indprintln(&", {dwordAddrSpace.memFlags.readWrite: 20} # (_TSF._RW ) Memory: Write Status")
-    indprintln(&", {dwordAddrSpace.memFlags.memAttrs: 20} # (_TSF._MEM) Memory: Cacheability")
-    indprintln(&", {dwordAddrSpace.memFlags.memType: 20} # (_TSF._MTP) Memory: Type")
-    indprintln(&", {dwordAddrSpace.memFlags.memIOTrans: 20} # (_TFS._TTP) Memory: Memory to I/O Translation")
+    case dwordAddrSpace.resType:
+    of resMemoryRange:
+      indprintln(&", {dwordAddrSpace.memFlags.readWrite: 20} # (_TSF._RW ) Memory: Write Status")
+      indprintln(&", {dwordAddrSpace.memFlags.memAttrs: 20} # (_TSF._MEM) Memory: Cacheability")
+      indprintln(&", {dwordAddrSpace.memFlags.memType: 20} # (_TSF._MTP) Memory: Type")
+      indprintln(&", {dwordAddrSpace.memFlags.memIOTrans: 20} # (_TFS._TTP) Memory: Memory to I/O Translation")
+    of resIORange:
+      indprintln(&", {dwordAddrSpace.ioFlags.rangeType: 20} # (_TSF._RNG) IO: Range Type")
+      indprintln(&", {dwordAddrSpace.ioFlags.ioMemTrans: 20} # (_TSF._TTP) IO: I/O to Memory Translation")
+      indprintln(&", {dwordAddrSpace.ioFlags.sparseTrans: 20} # (_TSF._TRS) IO: Sparse Translation")
+    of resBusNumberRange:
+      discard
     indprintln(&", {dwordAddrSpace.granularity: <20x} # (_GRA) AddressGranularity")
-    indprintln(&", {dwordAddrSpace.minAddr: <20x} # (_MIN) MinAddress")
-    indprintln(&", {dwordAddrSpace.maxAddr: <20x} # (_MAX) MaxAddress")
-    indprintln(&", {dwordAddrSpace.translationOffset: <20x} # (_TRA) AddressTranslation (Offset)")
-    indprintln(&", {dwordAddrSpace.addressLength: <20x} # (_LEN) AddressLength")
+    indprintln(&", 0x{dwordAddrSpace.minAddr: <18x} # (_MIN) MinAddress")
+    indprintln(&", 0x{dwordAddrSpace.maxAddr: <18x} # (_MAX) MaxAddress")
+    indprintln(&", 0x{dwordAddrSpace.translationOffset: <18x} # (_TRA) AddressTranslation (Offset)")
+    indprintln(&", 0x{dwordAddrSpace.addressLength: <18x} # (_LEN) AddressLength")
+  indprintln(")")
+
+proc visit(wordAddrSpace: WordAddrSpaceDesc) =
+  println("WordSpace (")
+  indent:
+    indprintln(&"  {wordAddrSpace.resType: 20} # (_RT ) ResourceType")
+    indprintln(&", {wordAddrSpace.addrSpaceFlags.decodeType: 20} # (_DEC) Decode")
+    indprintln(&", {wordAddrSpace.addrSpaceFlags.minFixed: 20} # (_MIF) MinType")
+    indprintln(&", {wordAddrSpace.addrSpaceFlags.maxFixed: 20} # (_MAF) MaxType")
+    case wordAddrSpace.resType:
+    of resMemoryRange:
+      indprintln(&", {wordAddrSpace.memFlags.readWrite: 20} # (_TSF._RW ) Memory: Write Status")
+      indprintln(&", {wordAddrSpace.memFlags.memAttrs: 20} # (_TSF._MEM) Memory: Cacheability")
+      indprintln(&", {wordAddrSpace.memFlags.memType: 20} # (_TSF._MTP) Memory: Type")
+      indprintln(&", {wordAddrSpace.memFlags.memIOTrans: 20} # (_TFS._TTP) Memory: Memory to I/O Translation")
+    of resIORange:
+      indprintln(&", {wordAddrSpace.ioFlags.rangeType: 20} # (_TSF._RNG) IO: Range Type")
+      indprintln(&", {wordAddrSpace.ioFlags.ioMemTrans: 20} # (_TSF._TTP) IO: I/O to Memory Translation")
+      indprintln(&", {wordAddrSpace.ioFlags.sparseTrans: 20} # (_TSF._TRS) IO: Sparse Translation")
+    of resBusNumberRange:
+      discard
+    indprintln(&", {wordAddrSpace.granularity: <20x} # (_GRA) AddressGranularity")
+    indprintln(&", 0x{wordAddrSpace.minAddr: <18x} # (_MIN) MinAddress")
+    indprintln(&", 0x{wordAddrSpace.maxAddr: <18x} # (_MAX) MaxAddress")
+    indprintln(&", 0x{wordAddrSpace.translationOffset: <18x} # (_TRA) AddressTranslation (Offset)")
+    indprintln(&", 0x{wordAddrSpace.addressLength: <18x} # (_LEN) AddressLength")
   indprintln(")")
 
 proc visit(extInterrupt: ExtendedInterruptDesc) =
@@ -601,14 +809,21 @@ proc visit(extInterrupt: ExtendedInterruptDesc) =
 
 proc visit(stmt: StatementOpcode) =
   case stmt.kind:
+  of stmtBreak:
+    visit(stmt.defBreak)
   of stmtIfElse:
     visit(stmt.defIfElse)
+  of stmtNotify:
+    visit(stmt.defNotify)
   of stmtRelease:
     visit(stmt.defRelease)
   of stmtReturn:
     visit(stmt.defReturn)
   of stmtWhile:
     visit(stmt.defWhile)
+
+proc visit(defBreak: DefBreak) =
+  println("Break")
 
 proc visit(defIfElse: DefIfElse) =
   print("If (")
@@ -623,6 +838,14 @@ proc visit(defIfElse: DefIfElse) =
     indent:
       visit(defIfElse.elseBody.get)
     indprintln("}")
+
+proc visit(defNotify: DefNotify) =
+  print("Notify (")
+  inline:
+    visit(defNotify.obj)
+    print(", ")
+    visit(defNotify.value)
+  println(")")
 
 proc visit(defRelease: DefRelease) =
   print("Release (")
@@ -791,12 +1014,17 @@ proc visit(localObj: LocalObj) =
   of loLocal7:
     print("Local7")
 
+proc visit(debugObj: DebugObj) =
+  println("Debug")
+
 proc visit(target: Target) =
   if target.kind != tgNullName:
     visit(target.superName)
 
 proc visit(superName: SuperName) =
   case superName.kind:
+  of snDebugObj:
+    visit(superName.debugObj)
   of snSimpleName:
     visit(superName.simpleName)
   of snRefTypeOpcode:
