@@ -39,11 +39,13 @@ type
   OpCodeByte = enum
     ocbZeroOp             = 0x00
     ocbOneOp              = 0x01
+    ocbAliasOp            = 0x06
     ocbNameOp             = 0x08
     ocbScopeOp            = 0x10
     ocbBufferOp           = 0x11
     ocbPackageOp          = 0x12
     ocbMethodOp           = 0x14
+    ocbExternalOp         = 0x15
     ocbLocal0Op           = 0x60
     ocbLocal1Op           = 0x61
     ocbLocal2Op           = 0x62
@@ -121,51 +123,51 @@ type
     # ocwLLessEqualOp       = 0x94_92
     # ocwLGreaterEqualOp    = 0x95_92
 
-  TermList = seq[TermObj]
+  TermList* = seq[TermObj]
 
-  TermObjKind = enum
+  TermObjKind* = enum
     toObject
     toStatement
     toExpression
-  TermObj = ref object
-    case kind: TermObjKind
-    of toObject:     obj: Obj
-    of toStatement:  stmt: StatementOpcode
-    of toExpression: expr: ExpressionOpcode
+    toUnknown
+  TermObj* = ref object
+    case kind*: TermObjKind
+    of toObject:     obj*: Obj
+    of toStatement:  stmt*: StatementOpcode
+    of toExpression: expr*: ExpressionOpcode
+    of toUnknown:     unknown*: Unknown
 
-  ObjKind = enum
+  ObjKind* = enum
     okNsModObj
     okNamedObj
-  Obj = ref object
-    case kind: ObjKind
-    of okNsModObj: nsModObj: NamespaceModifierObj
-    of okNamedObj: namedObj: NamedObj
+  Obj* = ref object
+    case kind*: ObjKind
+    of okNsModObj: nsModObj*: NamespaceModifierObj
+    of okNamedObj: namedObj*: NamedObj
 
-  NsModObjKind = enum
+  NsModObjKind* = enum
+    nmoDefAlias
     nmoDefName
     nmoDefScope
-  NamespaceModifierObj = ref object
-    case kind: NsModObjKind
-    of nmoDefName:  defName: DefName
-    of nmoDefScope: defScope: DefScope
+  NamespaceModifierObj* = ref object
+    case kind*: NsModObjKind
+    of nmoDefAlias: defAlias*: DefAlias
+    of nmoDefName:  defName*: DefName
+    of nmoDefScope: defScope*: DefScope
 
-  DefName = ref object
-    name: NameString
-    obj: DataObject
-  
-  DataRefObjKind = enum
-    droDataObject
-    droObjectRef
-  DataRefObj = ref object
-    case kind: DataRefObjKind
-    of droDataObject: obj: DataObject
-    of droObjectRef:  objRef: TermArg
+  DefAlias* = ref object
+    name*: NameString
+    source*: NameString
 
-  DefScope = ref object
-    name: NameString
-    terms: TermList
+  DefName* = ref object
+    name*: NameString
+    obj*: DataObject
 
-  NamedObjKind = enum
+  DefScope* = ref object
+    name*: NameString
+    terms*: TermList
+
+  NamedObjKind* = enum
     # noDefBankField
     # noDefCreateBitField
     # noDefCreateByteField
@@ -176,6 +178,7 @@ type
     # noDefDataRegion
     noDefDevice
     # noDefEvent
+    noDefExternal
     noDefField
     # noDefFunction
     # noDefIndexField
@@ -185,98 +188,104 @@ type
     # noDefPowerRes
     noDefProcessor # deprecated in 6.4
     # noDefThermalZone
-  NamedObj = ref object
-    case kind: NamedObjKind
+  NamedObj* = ref object
+    case kind*: NamedObjKind
     # of noDefBankField:        defBankField: DefBankField
     # of noDefCreateBitField:   defCreateBitField: DefCreateBitField
     # of noDefCreateByteField:  defCreateByteField: DefCreateByteField
-    of noDefCreateDWordField: defCreateDWordField: DefCreateDWordField
+    of noDefCreateDWordField: defCreateDWordField*: DefCreateDWordField
     # of noDefCreateField:      defCreateField: DefCreateField
     # of noDefCreateQWordField: defCreateQWordField: DefCreateQWordField
     # of noDefCreateWordField:  defCreateWordField: DefCreateWordField
     # of noDefDataRegion:       defDataRegion: DefDataRegion
-    of noDefDevice:           defDevice: DefDevice
+    of noDefDevice:           defDevice*: DefDevice
     # of noDefEvent:            defEvent: DefEvent
-    of noDefField:            defField: DefField
+    of noDefExternal:         defExternal*: DefExternal
+    of noDefField:            defField*: DefField
     # of noDefFunction:         defFunction: DefFunction
     # of noDefIndexField:       defIndexField: DefIndexField
-    of noDefMethod:           defMethod: DefMethod
-    of noDefMutex:            defMutex: DefMutex
-    of noDefOpRegion:         defOpRegion: DefOpRegion
+    of noDefMethod:           defMethod*: DefMethod
+    of noDefMutex:            defMutex*: DefMutex
+    of noDefOpRegion:         defOpRegion*: DefOpRegion
     # of noDefPowerRes:         defPowerRes: DefPowerRes
-    of noDefProcessor:        defProcessor: DefProcessor
+    of noDefProcessor:        defProcessor*: DefProcessor
     # of noDefThermalZone:      defThermalZone: DefThermalZone
 
-  DefCreateDWordField = ref object
-    srcBuffer: TermArg
-    byteIndex: TermArg
-    name: NameString
+  DefCreateDWordField* = ref object
+    name*: NameString
+    srcBuffer*: TermArg
+    byteIndex*: TermArg
 
-  DefDevice = ref object
-    name: NameString
-    body: TermList
+  DefDevice* = ref object
+    name*: NameString
+    body*: TermList
 
-  DefField = ref object
-    regionName: NameString
-    flags: FieldFlags
-    elements: seq[FieldElement]
-  FieldFlags {.packed.} = object
-    accessType {.bitsize: 4}: FieldAccessType
-    lockRule   {.bitsize: 1}: FieldLockRule
-    updateRule {.bitsize: 2}: FieldUpdateRule
-    reserved   {.bitsize: 1}: bool
-  FieldAccessType = enum
+  DefExternal* = ref object
+    name*: NameString
+    objType*: uint8
+    argCount*: uint8
+
+  DefField* = ref object
+    regionName*: NameString
+    flags*: FieldFlags
+    elements*: seq[FieldElement]
+  FieldFlags* {.packed.} = object
+    accessType* {.bitsize: 4}: FieldAccessType
+    lockRule*   {.bitsize: 1}: FieldLockRule
+    updateRule* {.bitsize: 2}: FieldUpdateRule
+    reserved    {.bitsize: 1}: bool
+  FieldAccessType* = enum
     fatAnyAcc    = (0, "AnyAcc")
     fatByteAcc   = (1, "ByteAcc")
     fatWordAcc   = (2, "WordAcc")
     fatDWordAcc  = (3, "DWordAcc")
     fatQWordAcc  = (4, "QWordAcc")
     fatBufferAcc = (5, "BufferAcc")
-  FieldLockRule = enum
+  FieldLockRule* = enum
     flrNoLock = (0, "NoLock")
     flrLock   = (1, "Lock")
-  FieldUpdateRule = enum
+  FieldUpdateRule* = enum
     furPreserve     = (0, "Preserve")
     furWriteAsOnes  = (1, "WriteAsOnes")
     furWriteAsZeros = (2, "WriteAsZeros")
-  FieldElementKind = enum
+  FieldElementKind* = enum
     feNamedField
     feReservedField
     # feAccessField
     # feExtendedAccessField
     # feConnectField
-  FieldElement = ref object
-    case kind: FieldElementKind
-    of feNamedField: namedField: NamedField
-    of feReservedField: reservedField: ReservedField
+  FieldElement* = ref object
+    case kind*: FieldElementKind
+    of feNamedField: namedField*: NamedField
+    of feReservedField: reservedField*: ReservedField
     # of feAccessField: accessField: AccessField
     # of feExtendedAccessField: extendedAccessField: ExtendedAccessField
     # of feConnectField: connectField: ConnectField
-  NamedField = object
-    name: string
-    bits: uint32
-  ReservedField = object
-    bits: uint32
+  NamedField* = object
+    name*: string
+    bits*: uint32
+  ReservedField* = object
+    bits*: uint32
   
-  DefMethod = ref object
-    name: NameString
-    flags: MethodFlags
-    terms: TermList
-  MethodFlags {.packed.} = object
+  DefMethod* = ref object
+    name*: NameString
+    flags*: MethodFlags
+    terms*: TermList
+  MethodFlags* {.packed.} = object
     argCount   {.bitsize: 3}: uint8
     serialized {.bitsize: 1}: bool
     syncLevel  {.bitsize: 4}: uint8
 
-  DefMutex = ref object
-    name: NameString
-    syncLevel: uint8
+  DefMutex* = ref object
+    name*: NameString
+    syncLevel*: uint8
 
-  DefOpRegion = ref object
-    name: NameString
-    space: RegionSpace
-    offset: TermArg
-    len: TermArg
-  RegionSpace = enum
+  DefOpRegion* = ref object
+    name*: NameString
+    space*: RegionSpace
+    offset*: TermArg
+    len*: TermArg
+  RegionSpace* = enum
     rsSystemMemory     = (0x00, "SystemMemory")
     rsSystemIO         = (0x01, "SystemIO")
     rsPciConfig        = (0x02, "PCI_Config")
@@ -290,12 +299,12 @@ type
     rsPCC              = (0x0A, "PCC")
 
   # deprecated in 6.4
-  DefProcessor = ref object
-    name: NameString
-    procID: uint8
-    pblkAddr: uint32
-    pblkLen: uint8
-    objects: TermList
+  DefProcessor* = ref object
+    name*: NameString
+    procID*: uint8
+    pblkAddr*: uint32
+    pblkLen*: uint8
+    objects*: TermList
 
   TermArgKind = enum
     taExpr
@@ -854,6 +863,10 @@ type
     ioDecode16 = (1, "Decode16")
 
 
+  Unknown* = ref object
+    bytes*: ptr UncheckedArray[byte]
+    len*: int
+
 # proc dumpHex*(bytes: openArray[uint8]) =
 #   for i in 0 ..< bytes.len:
 #     if i mod 16 == 0:
@@ -898,23 +911,20 @@ template withScope(p: var Parser, name: string, body: untyped) =
   body
   discard p.scopeStack.pop
 
-proc firstSome[T](opts: varargs[Option[T]]): Option[T] =
-  for i in 0 ..< opts.len:
-    if opts[i].isSome:
-      return opts[i]
-
-
 # forward declarations ({.experimental: "codeReordering".} doesn't work with circular deps)
 proc termList(p: var Parser): TermList
 proc termObj(p: var Parser): Option[TermObj]
 proc obj(p: var Parser): Option[Obj]
 
 proc namespaceModifierObj(p: var Parser): Option[NamespaceModifierObj]
+proc defAlias(p: var Parser): Option[DefAlias]
 proc defName(p: var Parser): Option[DefName]
+proc defScope*(p: var Parser): Option[DefScope]
 
 proc namedObj(p: var Parser): Option[NamedObj]
 proc defCreateDWordField(p: var Parser): Option[DefCreateDWordField]
 proc defField(p: var Parser): Option[DefField]
+proc defExternal(p: var Parser): Option[DefExternal]
 proc defDevice(p: var Parser): Option[DefDevice]
 proc defMutex(p: var Parser): Option[DefMutex]
 proc defOpRegion(p: var Parser): Option[DefOpRegion]
@@ -923,7 +933,6 @@ proc namedField(p: var Parser): Option[NamedField]
 proc reservedField(p: var Parser): Option[ReservedField]
 proc defProcessor(p: var Parser): Option[DefProcessor]
 proc defMethod(p: var Parser): Option[DefMethod]
-proc defScope*(p: var Parser): Option[DefScope]
 proc pkgLength(p: var Parser): Option[(uint8, uint32)]
 # proc pkgPayload(p: var Parser): Option[(ptr UncheckedArray[byte], int)]
 proc nameString(p: var Parser): Option[NameString]
@@ -1021,37 +1030,86 @@ proc readBuffer(p: var Parser): Option[seq[byte]] {.inline.}
 
 
 proc parse*(p: var Parser, aml: ptr UncheckedArray[byte], len: int): TermList =
+  # dumpHex(aml.toOpenArray(0, 63))
   p.ctx = ParseContext(chunk: aml, len: len, loc: 0)
   result = p.termList()
 
 proc termList(p: var Parser): TermList =
   # TermList := Nothing | <TermObj TermList>
+  # debugln(&"TermList")
+  
   var termObj = p.termObj()
   while termObj.isSome:
     result.add(termObj.get)
     termObj = p.termObj()
   
+  if p.ctx.loc < p.ctx.len:
+    # debugln(&"TermList: {result.len} {p.ctx.loc} {p.ctx.len}")
+    result.add(TermObj(
+      kind: toUnknown,
+      unknown: Unknown(
+        bytes: cast[ptr UncheckedArray[byte]](addr p.ctx.chunk[p.ctx.loc]),
+        len: p.ctx.len - p.ctx.loc,
+      )
+    ))
+
+  # debugln(&"TermList: {result.len}")
+  
 proc termObj(p: var Parser): Option[TermObj] =
   # TermObj := Object | StatementOpcode | ExpressionOpcode
-  result = firstSome(
-    p.obj().map(o => TermObj(kind: toObject, obj: o)),
-    p.statementOpcode().map(so => TermObj(kind: toStatement, stmt: so)),
-    p.expressionOpcode().map(eo => TermObj(kind: toExpression, expr: eo)),
-  )
+  # debugln(&"TermObj")
+  let obj = p.obj()
+  if obj.isSome:
+    # debugln(&"TermObj: {obj.get.kind}")
+    result = option TermObj(kind: toObject, obj: obj.get)
+    return
+  
+  let stmt = p.statementOpcode()
+  if stmt.isSome:
+    # debugln(&"TermObj: {stmt.get.kind}")
+    result = option TermObj(kind: toStatement, stmt: stmt.get)
+    return
+
+  let exprOpcode = p.expressionOpcode()
+  if exprOpcode.isSome:
+    # debugln(&"TermObj: {exprOpcode.get.kind}")
+    result = option TermObj(kind: toExpression, expr: exprOpcode.get)
+    return
 
 proc obj(p: var Parser): Option[Obj] =
   # Object := NameSpaceModifierObj | NamedObj
-  result = firstSome(
-    p.namespaceModifierObj().map(nmo => Obj(kind: okNsModObj, nsModObj: nmo)),
-    p.namedObj().map(no => Obj(kind: okNamedObj, namedObj: no)),
-  )
+  # debugln(&"Object")
+  result = p.namespaceModifierObj().map(nmo => Obj(kind: okNsModObj, nsModObj: nmo))
+  if result.isSome:
+    return
+
+  result = p.namedObj().map(no => Obj(kind: okNamedObj, namedObj: no))
+  
 
 proc namespaceModifierObj(p: var Parser): Option[NamespaceModifierObj] =
   # NameSpaceModifierObj := DefAlias | DefName | DefScope
-  result = firstSome(
-    p.defName().map(dn => NamespaceModifierObj(kind: nmoDefName, defName: dn)),
-    p.defScope().map(ds => NamespaceModifierObj(kind: nmoDefScope, defScope: ds)),
-  )
+  # debugln(&"NamespaceModifierObj")
+  result = p.defAlias().map(da => NamespaceModifierObj(kind: nmoDefAlias, defAlias: da))
+  if result.isSome:
+    return
+
+  result = p.defName().map(dn => NamespaceModifierObj(kind: nmoDefName, defName: dn))
+  if result.isSome:
+    return
+
+  result = p.defScope().map(ds => NamespaceModifierObj(kind: nmoDefScope, defScope: ds))
+  if result.isSome:
+    return
+
+proc defAlias(p: var Parser): Option[DefAlias] =
+  # DefAlias := AliasOp NameString NameString
+  # debugln(&"DefAlias")
+  if p.matchOpCodeByte(ocbAliasOp):
+    let source = p.nameString()
+    if source.isSome:
+      let name = p.nameString()
+      if name.isSome:
+        result = option DefAlias(name: name.get, source: source.get)
 
 proc defName(p: var Parser): Option[DefName] =
   # AML spec is inconsistent with ASL spec
@@ -1060,6 +1118,7 @@ proc defName(p: var Parser): Option[DefName] =
   #                       ObjectName, // NameString
   #                       Object // DataObject
   #                     )
+  # debugln(&"DefName")
   if p.matchOpCodeByte(ocbNameOp):
     let name = p.nameString()
     if name.isSome:
@@ -1070,18 +1129,40 @@ proc defName(p: var Parser): Option[DefName] =
 proc namedObj(p: var Parser): Option[NamedObj] =
   # NamedObj := DefBankField | DefCreateBitField | DefCreateByteField | DefCreateDWordField
   #           | DefCreateField | DefCreateQWordField | DefCreateWordField | DefDataRegion
-  #           | DefDevice | DefEvent | DefField | DefFunction | DefIndexField | DefMethod | DefMutex
-  #           | DefOpRegion | DefPowerRes | DefProcessor | DefThermalZone
+  #           | DefDevice | DefEvent | DefExternal | DefField | DefFunction | DefIndexField
+  #           | DefMethod | DefMutex | DefOpRegion | DefPowerRes | DefProcessor | DefThermalZone
   # debugln(&"NamedObj")
-  result = firstSome(
-    p.defCreateDWordField().map(dcd => NamedObj(kind: noDefCreateDWordField, defCreateDWordField: dcd)),
-    p.defDevice().map(dd => NamedObj(kind: noDefDevice, defDevice: dd)),
-    p.defMutex().map(dm => NamedObj(kind: noDefMutex, defMutex: dm)),
-    p.defOpRegion().map(dor => NamedObj(kind: noDefOpRegion, defOpRegion: dor)),
-    p.defField().map(df => NamedObj(kind: noDefField, defField: df)),
-    p.defMethod().map(dm => NamedObj(kind: noDefMethod, defMethod: dm)),
-    p.defProcessor().map(dp => NamedObj(kind: noDefProcessor, defProcessor: dp)),
-  )
+  result = p.defCreateDWordField().map(dcd => NamedObj(kind: noDefCreateDWordField, defCreateDWordField: dcd))
+  if result.isSome:
+    return
+
+  result = p.defDevice().map(dd => NamedObj(kind: noDefDevice, defDevice: dd))
+  if result.isSome:
+    return
+
+  result = p.defExternal().map(de => NamedObj(kind: noDefExternal, defExternal: de))
+  if result.isSome:
+    return
+
+  result = p.defMutex().map(dm => NamedObj(kind: noDefMutex, defMutex: dm))
+  if result.isSome:
+    return
+
+  result = p.defOpRegion().map(dor => NamedObj(kind: noDefOpRegion, defOpRegion: dor))
+  if result.isSome:
+    return
+
+  result = p.defField().map(df => NamedObj(kind: noDefField, defField: df))
+  if result.isSome:
+    return
+
+  result = p.defMethod().map(dm => NamedObj(kind: noDefMethod, defMethod: dm))
+  if result.isSome:
+    return
+
+  result = p.defProcessor().map(dp => NamedObj(kind: noDefProcessor, defProcessor: dp))
+  if result.isSome:
+    return
 
 proc defCreateDWordField(p: var Parser): Option[DefCreateDWordField] =
   # DefCreateDWordField := CreateDWordFieldOp SourceBuff ByteIndex NameString
@@ -1094,6 +1175,21 @@ proc defCreateDWordField(p: var Parser): Option[DefCreateDWordField] =
         let name = p.nameString()
         if name.isSome:
           result = option DefCreateDWordField(srcBuffer: srcBuffer.get, byteIndex: byteIndex.get, name: name.get)
+
+proc defExternal(p: var Parser): Option[DefExternal] =
+  # DefExternal := ExternalOp NameString ObjectType ArgumentCount
+  # debugln(&"DefExternal")
+  if p.matchOpCodeByte(ocbExternalOp):
+    let name = p.nameString()
+    if name.isSome:
+      let objType = p.readByte()
+      if objType.isSome:
+        let argCount = p.readByte()
+        if argCount.isSome:
+          if p.peekByte().filter(b => b == 0x01).isSome:
+            # Some ASL compilers emit a 0x01 byte after the argument count
+            discard p.readByte()
+          result = option DefExternal(name: name.get, objType: objType.get, argCount: argCount.get)
 
 proc defDevice(p: var Parser): Option[DefDevice] =
   # DefDevice := DeviceOp PkgLength NameString TermList
@@ -1391,65 +1487,122 @@ proc termArg(p: var Parser): Option[TermArg] =
   #   ExpressionOpcode -> MethodInvocation -> NameString -> NamePath -> NullName (0x00)
   # In this case we're giving precedence to DataObject, which is more common.
 
-  result = firstSome(
-    p.dataObject().map(dobj => TermArg(kind: taDataObject, dataObj: dobj)),
-    p.expressionOpcode().map(exp => TermArg(kind: taExpr, expr: exp)),
-    p.argObj().map(aobj => TermArg(kind: taArgObj, argObj: aobj)),
-    p.localObj().map(lobj => TermArg(kind: taLocalObj, localObj: lobj)),
-    p.nameString().map(ns => TermArg(kind: taName, name: ns)),
-  )
+  result = p.dataObject().map(dobj => TermArg(kind: taDataObject, dataObj: dobj))
+  if result.isSome:
+    return
+  
+  result = p.expressionOpcode().map(exp => TermArg(kind: taExpr, expr: exp))
+  if result.isSome:
+    return
+
+  result = p.argObj().map(aobj => TermArg(kind: taArgObj, argObj: aobj))
+  if result.isSome:
+    return
+
+  result = p.localObj().map(lobj => TermArg(kind: taLocalObj, localObj: lobj))
+  if result.isSome:
+    return
+
+  result = p.nameString().map(ns => TermArg(kind: taName, name: ns))
+  if result.isSome:
+    return
 
 # SimpleName / SuperName
 
 proc simpleName(p: var Parser): Option[SimpleName] =
   # SimpleName := NameString | ArgObj | LocalObj
-  result = firstSome(
-    p.nameString().map(ns => SimpleName(kind: snName, name: ns)),
-    p.argObj().map(aobj => SimpleName(kind: snArg, arg: aobj)),
-    p.localObj().map(lobj => SimpleName(kind: snLocal, local: lobj)),
-  )
+  # debugln(&"SimpleName")
+  result = p.nameString().map(ns => SimpleName(kind: snName, name: ns))
+  if result.isSome:
+    return
+
+  result = p.argObj().map(aobj => SimpleName(kind: snArg, arg: aobj))
+  if result.isSome:
+    return
+
+  result = p.localObj().map(lobj => SimpleName(kind: snLocal, local: lobj))
 
 proc superName(p: var Parser): Option[SuperName] =
   # SuperName := SimpleName | DebugObj | ReferenceTypeOpcode
-  result = firstSome(
-    p.simpleName().map(sn => SuperName(kind: snSimpleName, simpleName: sn)),
-    p.debugObj().map(dobj => SuperName(kind: snDebugObj, debugObj: dobj)),
-    p.refTypeOpcode().map(rto => SuperName(kind: snRefTypeOpcode, refTypeOpcode: rto)),
-  )
+  # debugln(&"SuperName")
+  result = p.simpleName().map(sn => SuperName(kind: snSimpleName, simpleName: sn))
+  if result.isSome:
+    return
+
+  result = p.debugObj().map(dobj => SuperName(kind: snDebugObj, debugObj: dobj))
+  if result.isSome:
+    return
+
+  result = p.refTypeOpcode().map(rto => SuperName(kind: snRefTypeOpcode, refTypeOpcode: rto))
+  if result.isSome:
+    return
 
 proc refTypeOpcode(p: var Parser): Option[RefTypeOpcode] =
   # ReferenceTypeOpcode := DefRefOf | DefDerefOf | DefIndex | UserTermObj
-  result = firstSome(
-    # p.defRefOf().map(dro => RefTypeOpcode(kind: rtoDefRefOf, defRefOf: dro)),
-    # p.defDerefOf().map(ddo => RefTypeOpcode(kind: rtoDefDerefOf, defDerefOf: ddo)),
-    p.defIndex().map(di => RefTypeOpcode(kind: rtoIndex, defIndex: di)),
-    # p.userTermObj().map(uto => RefTypeOpcode(kind: rtoUserTermObj, userTermObj: uto)),
-  )
+  # debugln(&"RefTypeOpcode")
+  # result = p.defRefOf().map(dro => RefTypeOpcode(kind: rtoDefRefOf, defRefOf: dro))
+  # if result.isSome:
+  #   return
+
+  # result = p.defDerefOf().map(ddo => RefTypeOpcode(kind: rtoDefDerefOf, defDerefOf: ddo))
+  # if result.isSome:
+  #   return
+
+  result = p.defIndex().map(di => RefTypeOpcode(kind: rtoIndex, defIndex: di))
+  if result.isSome:
+    return
+
+  # result = p.userTermObj().map(uto => RefTypeOpcode(kind: rtoUserTermObj, userTermObj: uto))
+  # if result.isSome:
+  #   return
 
 ### DataObject
 
 proc dataObject(p: var Parser): Option[DataObject] =
   # DataObject := ComputationalData | DefPackage | DefVarPackage
-  result = firstSome(
-    p.computationalData().map(cd => DataObject(kind: doComputationalData, compData: cd)),
-    p.defPackage().map(dp => DataObject(kind: doDefPackage, defPackage: dp)),
-    # p.defVarPackage()
-  )
+  # debugln(&"DataObject")
+  result = p.computationalData().map(cd => DataObject(kind: doComputationalData, compData: cd))
+  if result.isSome:
+    return
+
+  result = p.defPackage().map(dp => DataObject(kind: doDefPackage, defPackage: dp))
+  if result.isSome:
+    return
 
 ### ComputationalData
 
 proc computationalData(p: var Parser): Option[ComputationalData] =
   # ComputationalData := ByteConst | WordConst | DWordConst | QWordConst | String | ConstObj | RevisionOp | DefBuffer
-  result = firstSome(
-    p.byteConst().map(bc => ComputationalData(kind: cdByteConst, byteConst: bc)),
-    p.wordConst().map(wc => ComputationalData(kind: cdWordConst, wordConst: wc)),
-    p.dwordConst().map(dwc => ComputationalData(kind: cdDWordConst, dwordConst: dwc)),
-    # p.qwordConst().map(qwc => ComputationalData(kind: cdQWordConst, qwordConst: qwc)),
-    p.str().map(s => ComputationalData(kind: cdString, str: s)),
-    p.constObj().map(co => ComputationalData(kind: cdConstObj, constObj: co)),
-    # revisionOp()
-    p.defBuffer().map(dbuf => ComputationalData(kind: cdDefBuffer, defBuffer: dbuf)),
-  )
+  # debugln(&"ComputationalData")
+  result = p.byteConst().map(bc => ComputationalData(kind: cdByteConst, byteConst: bc))
+  if result.isSome:
+    return
+
+  result = p.wordConst().map(wc => ComputationalData(kind: cdWordConst, wordConst: wc))
+  if result.isSome:
+    return
+
+  result = p.dwordConst().map(dwc => ComputationalData(kind: cdDWordConst, dwordConst: dwc))
+  if result.isSome:
+    return
+
+  # result = p.qwordConst().map(qwc => ComputationalData(kind: cdQWordConst, qwordConst: qwc))
+  # if result.isSome:
+  #   return
+
+  result = p.str().map(s => ComputationalData(kind: cdString, str: s))
+  if result.isSome:
+    return
+
+  result = p.constObj().map(co => ComputationalData(kind: cdConstObj, constObj: co))
+  if result.isSome:
+    return
+
+  # revisionOp()
+
+  result = p.defBuffer().map(dbuf => ComputationalData(kind: cdDefBuffer, defBuffer: dbuf))
+  if result.isSome:
+    return
 
 proc byteConst(p: var Parser): Option[uint8] =
   # ByteConst := BytePrefix ByteData
@@ -1525,31 +1678,98 @@ proc expressionOpcode(p: var Parser): Option[ExpressionOpcode] =
   #  | DefObjectType | DefOr | DefPackage | DefVarPackage | DefRefOf | DefShiftLeft | DefShiftRight
   #  | DefSizeOf | DefStore | DefSubtract | DefTimer | DefToBCD | DefToBuffer | DefToDecimalString
   #  | DefToHexString | DefToInteger | DefToString | DefWait | DefXOr | MethodInvocation
-  result = firstSome(
-    p.defAcquire().map(da => ExpressionOpcode(kind: expAcquire, defAcquire: da)),
-    p.defAnd().map(da => ExpressionOpcode(kind: expAnd, defAnd: da)),
-    p.defBuffer().map(db => ExpressionOpcode(kind: expBuffer, defBuffer: db)),
-    p.defToHexString().map(ths => ExpressionOpcode(kind: expToHexString, defToHexString: ths)),
-    p.defToBuffer().map(tb => ExpressionOpcode(kind: expToBuffer, defToBuffer: tb)),
-    p.defSubtract().map(ds => ExpressionOpcode(kind: expSubtract, defSubtract: ds)),
-    p.defSizeOf().map(so => ExpressionOpcode(kind: expSizeOf, defSizeOf: so)),
-    p.defStore().map(ds => ExpressionOpcode(kind: expStore, defStore: ds)),
-    p.defLAnd().map(dla => ExpressionOpcode(kind: expLAnd, defLAnd: dla)),
-    p.defLEqual().map(dle => ExpressionOpcode(kind: expLEqual, defLEqual: dle)),
-    p.defLLess().map(dll => ExpressionOpcode(kind: expLLess, defLLess: dll)),
-    p.defLGreater().map(dlg => ExpressionOpcode(kind: expLGreater, defLGreater: dlg)),
-    p.defLNot().map(dln => ExpressionOpcode(kind: expLNot, defLNot: dln)),
-    p.defLOr().map(dlo => ExpressionOpcode(kind: expLOr, defLOr: dlo)),
-    p.defObjectType().map(doo => ExpressionOpcode(kind: expObjectType, defObjectType: doo)),
-    p.defOr().map(dor => ExpressionOpcode(kind: expOr, defOr: dor)),
-    p.defPackage().map(dp => ExpressionOpcode(kind: expPackage, defPackage: dp)),
-    p.defIndex().map(di => ExpressionOpcode(kind: expIndex, defIndex: di)),
-    p.defDerefOf().map(ddo => ExpressionOpcode(kind: expDerefOf, defDerefOf: ddo)),
-    p.defIncrement().map(di => ExpressionOpcode(kind: expIncrement, defIncrement: di)),
-    p.defShiftLeft().map(dsl => ExpressionOpcode(kind: expShiftLeft, defShiftLeft: dsl)),
-    p.defShiftRight().map(dsr => ExpressionOpcode(kind: expShiftRight, defShiftRight: dsr)),
-    p.methodInvocation().map(mi => ExpressionOpcode(kind: expMethodInvocation, call: mi)),
-  )
+  # debugln(&"ExpressionOpcode")
+  result = p.defAcquire().map(da => ExpressionOpcode(kind: expAcquire, defAcquire: da))
+  if result.isSome:
+    return
+
+  result = p.defAnd().map(da => ExpressionOpcode(kind: expAnd, defAnd: da))
+  if result.isSome:
+    return
+
+  result = p.defBuffer().map(db => ExpressionOpcode(kind: expBuffer, defBuffer: db))
+  if result.isSome:
+    return
+
+  result = p.defToHexString().map(ths => ExpressionOpcode(kind: expToHexString, defToHexString: ths))
+  if result.isSome:
+    return
+
+  result = p.defToBuffer().map(tb => ExpressionOpcode(kind: expToBuffer, defToBuffer: tb))
+  if result.isSome:
+    return
+  
+  result = p.defSubtract().map(ds => ExpressionOpcode(kind: expSubtract, defSubtract: ds))
+  if result.isSome:
+    return
+
+  result = p.defSizeOf().map(so => ExpressionOpcode(kind: expSizeOf, defSizeOf: so))
+  if result.isSome:
+    return
+
+  result = p.defStore().map(ds => ExpressionOpcode(kind: expStore, defStore: ds))
+  if result.isSome:
+    return
+  
+  result = p.defLAnd().map(dla => ExpressionOpcode(kind: expLAnd, defLAnd: dla))
+  if result.isSome:
+    return
+
+  result = p.defLEqual().map(dle => ExpressionOpcode(kind: expLEqual, defLEqual: dle))
+  if result.isSome:
+    return
+
+  result = p.defLLess().map(dll => ExpressionOpcode(kind: expLLess, defLLess: dll))
+  if result.isSome:
+    return
+
+  result = p.defLGreater().map(dlg => ExpressionOpcode(kind: expLGreater, defLGreater: dlg))
+  if result.isSome:
+    return
+  
+  result = p.defLNot().map(dln => ExpressionOpcode(kind: expLNot, defLNot: dln))
+  if result.isSome:
+    return
+
+  result = p.defLOr().map(dlo => ExpressionOpcode(kind: expLOr, defLOr: dlo))
+  if result.isSome:
+    return
+
+  result = p.defObjectType().map(doo => ExpressionOpcode(kind: expObjectType, defObjectType: doo))
+  if result.isSome:
+    return
+
+  result = p.defOr().map(dor => ExpressionOpcode(kind: expOr, defOr: dor))
+  if result.isSome:
+    return
+
+  result = p.defPackage().map(dp => ExpressionOpcode(kind: expPackage, defPackage: dp))
+  if result.isSome:
+    return
+
+  result = p.defIndex().map(di => ExpressionOpcode(kind: expIndex, defIndex: di))
+  if result.isSome:
+    return
+
+  result = p.defDerefOf().map(ddo => ExpressionOpcode(kind: expDerefOf, defDerefOf: ddo))
+  if result.isSome:
+    return
+
+  result = p.defIncrement().map(di => ExpressionOpcode(kind: expIncrement, defIncrement: di))
+  if result.isSome:
+    return
+
+  result = p.defShiftLeft().map(dsl => ExpressionOpcode(kind: expShiftLeft, defShiftLeft: dsl))
+  if result.isSome:
+    return
+
+  result = p.defShiftRight().map(dsr => ExpressionOpcode(kind: expShiftRight, defShiftRight: dsr))
+  if result.isSome:
+    return
+
+  result = p.methodInvocation().map(mi => ExpressionOpcode(kind: expMethodInvocation, call: mi))
+  if result.isSome:
+    return
 
 proc defAcquire(p: var Parser): Option[DefAcquire] =
   # DefAcquire := AcquireOp MutexObject Timeout
@@ -1713,13 +1933,25 @@ proc defObjectType(p: var Parser): Option[DefObjectType] =
   # DefObjectType := ObjectTypeOp <SimpleName | DebugObj | DefRefOf | DefDerefOf | DefIndex>
   # debugln(&"DefObjectType")
   if p.matchOpCodeByte(ocbObjectTypeOp):
-    result = firstSome(
-      p.simpleName().map(name => DefObjectType(kind: otSimpleName, name: name)),
-      p.debugObj().map(dobj => DefObjectType(kind: otDebugObj, debugObj: dobj)),
-      # p.defRefOf().map(ref => DefObjectType(kind: otDefRefOf, ref: ref)),
-      p.defDerefOf().map(deref => DefObjectType(kind: otDerefOf, derefOf: deref)),
-      p.defIndex().map(index => DefObjectType(kind: otIndex, index: index)),
-    )
+    result = p.simpleName().map(name => DefObjectType(kind: otSimpleName, name: name))
+    if result.isSome:
+      return
+
+    result = p.debugObj().map(dobj => DefObjectType(kind: otDebugObj, debugObj: dobj))
+    if result.isSome:
+      return
+
+    # result = p.defRefOf().map(ref => DefObjectType(kind: otDefRefOf, ref: ref))
+    # if result.isSome:
+    #   return
+
+    result = p.defDerefOf().map(deref => DefObjectType(kind: otDerefOf, derefOf: deref))
+    if result.isSome:
+      return
+
+    result = p.defIndex().map(index => DefObjectType(kind: otIndex, index: index))
+    if result.isSome:
+      return
 
 proc defOr(p: var Parser): Option[DefOr] =
   # DefOr := OrOp Operand Operand Target
@@ -1735,10 +1967,14 @@ proc defOr(p: var Parser): Option[DefOr] =
 
 proc packageElement(p: var Parser): Option[PackageElement] =
   # PackageElement := DataObject | NameString
-  result = firstSome(
-    p.dataObject().map(dobj => PackageElement(kind: peDataObj, dataObj: dobj)),
-    p.nameString().map(ns => PackageElement(kind: peNameString, name: ns)),
-  )
+  # debugln(&"DefPackageElement")
+  result = p.dataObject().map(dobj => PackageElement(kind: peDataObj, dataObj: dobj))
+  if result.isSome:
+    return
+
+  result = p.nameString().map(ns => PackageElement(kind: peNameString, name: ns))
+  if result.isSome:
+    return
 
 proc defPackage(p: var Parser): Option[DefPackage] =
   # DefPackage := PackageOp PkgLength NumElements PackageElementList
@@ -1847,16 +2083,37 @@ proc methodInvocation(p: var Parser): Option[MethodInvocation] =
 ### Resource Descriptors
 
 proc resourceDesc(p: var Parser): Option[ResourceDescriptor] =
-  result = firstSome(
-    p.irqNoFlagsDesc().map(irqnfd => ResourceDescriptor(kind: rdIrqNoFlags, irqNoFlags: irqnfd)),
-    p.irqDesc().map(irqd => ResourceDescriptor(kind: rdIrq, irq: irqd)),
-    p.ioPortDesc().map(iopd => ResourceDescriptor(kind: rdIoPort, ioPort: iopd)),
-    p.memory32FixedDesc().map(m32fd => ResourceDescriptor(kind: rdMemory32Fixed, mem32Fixed: m32fd)),
-    p.qwordAddrSpaceDesc().map(qwas => ResourceDescriptor(kind: rdQWordAddressSpace, qwordAddrSpace: qwas)),
-    p.dwordAddrSpaceDesc().map(dwas => ResourceDescriptor(kind: rdDWordAddressSpace, dwordAddrSpace: dwas)),
-    p.wordAddrSpaceDesc().map(was => ResourceDescriptor(kind: rdWordAddressSpace, wordAddrSpace: was)),
-    p.extendedInterruptDesc().map(eid => ResourceDescriptor(kind: rdExtendedInterrupt, extInterrupt: eid)),
-  )
+  result = p.irqNoFlagsDesc().map(irqnfd => ResourceDescriptor(kind: rdIrqNoFlags, irqNoFlags: irqnfd))
+  if result.isSome:
+    return
+
+  result = p.irqDesc().map(irqd => ResourceDescriptor(kind: rdIrq, irq: irqd))
+  if result.isSome:
+    return
+
+  result = p.ioPortDesc().map(iopd => ResourceDescriptor(kind: rdIoPort, ioPort: iopd))
+  if result.isSome:
+    return
+
+  result = p.memory32FixedDesc().map(m32fd => ResourceDescriptor(kind: rdMemory32Fixed, mem32Fixed: m32fd))
+  if result.isSome:
+    return
+
+  result = p.qwordAddrSpaceDesc().map(qwas => ResourceDescriptor(kind: rdQWordAddressSpace, qwordAddrSpace: qwas))
+  if result.isSome:
+    return
+
+  result = p.dwordAddrSpaceDesc().map(dwas => ResourceDescriptor(kind: rdDWordAddressSpace, dwordAddrSpace: dwas))
+  if result.isSome:
+    return
+
+  result = p.wordAddrSpaceDesc().map(was => ResourceDescriptor(kind: rdWordAddressSpace, wordAddrSpace: was))
+  if result.isSome:
+    return
+
+  result = p.extendedInterruptDesc().map(eid => ResourceDescriptor(kind: rdExtendedInterrupt, extInterrupt: eid))
+  if result.isSome:
+    return
 
 proc irqNoFlagsDesc(p: var Parser): Option[IrqNoFlagsDesc] =
   # debugln(&"IrqNoFlags")
@@ -2111,14 +2368,29 @@ proc statementOpcode(p: var Parser): Option[StatementOpcode] =
   #   := DefBreak | DefBreakPoint | DefContinue | DefFatal | DefIfElse | DefNoop | DefNotify
   #    | DefRelease | DefReset | DefReturn | DefSignal | DefSleep | DefStall | DefWhile
   # debugln(&"StatementOpcode")
-  result = firstSome(
-    p.defBreak().map(db => StatementOpcode(kind: stmtBreak, defBreak: db)),
-    p.defIfElse().map(die => StatementOpcode(kind: stmtIfElse, defIfElse: die)),
-    p.defNotify().map(dn => StatementOpcode(kind: stmtNotify, defNotify: dn)),
-    p.defRelease().map(dr => StatementOpcode(kind: stmtRelease, defRelease: dr)),
-    p.defReturn().map(dr => StatementOpcode(kind: stmtReturn, defReturn: dr)),
-    p.defWhile().map(dw => StatementOpcode(kind: stmtWhile, defWhile: dw)),
-  )
+  result = p.defBreak().map(db => StatementOpcode(kind: stmtBreak, defBreak: db))
+  if result.isSome:
+    return
+
+  result = p.defIfElse().map(die => StatementOpcode(kind: stmtIfElse, defIfElse: die))
+  if result.isSome:
+    return
+
+  result = p.defNotify().map(dn => StatementOpcode(kind: stmtNotify, defNotify: dn))
+  if result.isSome:
+    return
+
+  result = p.defRelease().map(dr => StatementOpcode(kind: stmtRelease, defRelease: dr))
+  if result.isSome:
+    return
+
+  result = p.defReturn().map(dr => StatementOpcode(kind: stmtReturn, defReturn: dr))
+  if result.isSome:
+    return
+
+  result = p.defWhile().map(dw => StatementOpcode(kind: stmtWhile, defWhile: dw))
+  if result.isSome:
+    return
 
 proc defBreak(p: var Parser): Option[DefBreak] =
   # DefBreak := BreakOp
@@ -2205,10 +2477,13 @@ proc operand(p: var Parser): Option[Operand] =
 proc target(p: var Parser): Option[Target] =
   # Target := SuperName | NullName
   # debugln(&"Target")
-  result = firstSome(
-    p.chr(chNull).map(nn => Target(kind: tgNullName)),
-    p.superName().map(sn => Target(kind: tgSuperName, superName: sn)),
-  )
+  result = p.chr(chNull).map(nn => Target(kind: tgNullName))
+  if result.isSome:
+    return
+
+  result = p.superName().map(sn => Target(kind: tgSuperName, superName: sn))
+  if result.isSome:
+    return
 
 ### char/byte and ranges
 

@@ -4,7 +4,7 @@
 import std/options
 import std/strformat
 
-import table, xsdt, aml, amltree
+import table, xsdt, aml, amltree, namespace
 import ../devices/console
 
 
@@ -202,6 +202,7 @@ proc showFadt*() =
     writeln("")
     print(termList)
 
+    namespace.build(termList)
     # proc dumpHex(bytes: ptr UncheckedArray[uint8], len: int) =
     #   for i in 0 ..< len:
     #     if i mod 16 == 0:

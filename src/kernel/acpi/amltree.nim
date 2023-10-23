@@ -13,11 +13,13 @@ privateAccess(TermObj)
 privateAccess(Obj)
 
 privateAccess(NamespaceModifierObj)
+privateAccess(DefAlias)
 privateAccess(DefName)
 privateAccess(DefScope)
 
 privateAccess(NamedObj)
 privateAccess(DefCreateDWordField)
+privateAccess(DefExternal)
 privateAccess(DefField)
 privateAccess(DefDevice)
 privateAccess(DefMutex)
@@ -97,11 +99,13 @@ proc visit(termObj: TermObj)
 proc visit(obj: Obj)
 
 proc visit(nsModObj: NamespaceModifierObj)
+proc visit(defAlias: DefAlias)
 proc visit(defName: DefName)
 proc visit(defScope: DefScope)
 
 proc visit(namedObj: NamedObj)
 proc visit(defCreateDWordField: DefCreateDWordField)
+proc visit(defExternal: DefExternal)
 proc visit(defField: DefField)
 proc visit(defDevice: DefDevice)
 proc visit(defMutex: DefMutex)
@@ -166,6 +170,8 @@ proc visit(target: Target)
 proc visit(superName: SuperName)
 proc visit(simpleName: SimpleName)
 
+proc visit(unknown: Unknown)
+
 proc toUuid(bytes: seq[byte]): Option[string]
 
 var
@@ -223,6 +229,8 @@ proc visit(termObj: TermObj) =
     visit(termObj.stmt)
   of toExpression:
     visit(termObj.expr)
+  of toUnknown:
+    visit(termObj.unknown)
 
 ## TermObj kinds
 ##   Object | StatementOpcode | ExpressionOpcode
@@ -239,21 +247,19 @@ proc visit(obj: Obj) =
 
 proc visit(nsModObj: NamespaceModifierObj) =
   case nsModObj.kind:
+  of nmoDefAlias:
+    visit(nsModObj.defAlias)
   of nmoDefName:
     visit(nsModObj.defName)
   of nmoDefScope:
     visit(nsModObj.defScope)
 
-proc visit(defName: DefName) =
-  print(&"Name ({defName.name}, ")
-  inline:
-    visit(defName.obj)
-  println(")")
-
 proc visit(namedObj: NamedObj) =
   case namedObj.kind:
   of noDefCreateDWordField:
     visit(namedObj.defCreateDWordField)
+  of noDefExternal:
+    visit(namedObj.defExternal)
   of noDefDevice:
     visit(namedObj.defDevice)
   of noDefMutex:
@@ -269,6 +275,15 @@ proc visit(namedObj: NamedObj) =
 
 ## NamespaceModifierObj kinds
 ##   DefAlias | DefName | DefScope
+
+proc visit(defAlias: DefAlias) =
+  println(&"Alias ({defAlias.source}, {defAlias.name})")
+
+proc visit(defName: DefName) =
+  print(&"Name ({defName.name}, ")
+  inline:
+    visit(defName.obj)
+  println(")")
 
 proc visit(defScope: DefScope) =
   println(&"Scope ({defScope.name}) {{")
@@ -287,6 +302,9 @@ proc visit(defCreateDWordField: DefCreateDWordField) =
   print(", ")
   visit(defCreateDWordField.byteIndex)
   println(&", {defCreateDWordField.name})")
+
+proc visit(defExternal: DefExternal) =
+  println(&"External ({defExternal.name}, {defExternal.objType}, {defExternal.argCount})")
 
 proc visit(defDevice: DefDevice) =
   println(&"Device ({defDevice.name}) {{")
@@ -1038,3 +1056,19 @@ proc visit(simpleName: SimpleName) =
     visit(simpleName.arg)
   of snLocal:
     visit(simpleName.local)
+
+proc visit(unknown: Unknown) =
+  print(&"Unknown (")
+  indent:
+    for i in 0 ..< unknown.len:
+      if i mod 16 == 0:
+        println("")
+        indprint("")
+        if i > 16 * 16:
+          print(&"...")
+          break
+      print(&"{unknown.bytes[i]:02x}")
+      if i < unknown.len:
+        print(" ")
+    println("")
+  indprintln(")")
