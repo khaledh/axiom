@@ -17,6 +17,14 @@ proc showPciDeviceFunction(bus, dev, fn: uint8) =
     subClass = (class shr 16) and 0xff
     progIF = (class shr 8) and 0xff
 
+    # BARs
+    bar0 = pciConfigRead32(bus, dev, fn, 0x10)
+    bar1 = pciConfigRead32(bus, dev, fn, 0x14)
+    bar2 = pciConfigRead32(bus, dev, fn, 0x18)
+    bar3 = pciConfigRead32(bus, dev, fn, 0x1c)
+    bar4 = pciConfigRead32(bus, dev, fn, 0x20)
+    bar5 = pciConfigRead32(bus, dev, fn, 0x24)
+
     interrupt = pciConfigRead16(bus, dev, fn, 0x3c)
     intLine = interrupt and 0xff
     intPin = interrupt shr 8
@@ -44,6 +52,14 @@ proc showPciDeviceFunction(bus, dev, fn: uint8) =
         let satacr1 = pciConfigRead16(bus, dev, fn, capOffset + 4)
         write(&" barloc={satacr1 and 0xf:0>4b}b, barofst={(satacr1 shr 4) and 0xfffff:0>5x}h")
       capOffset = nextCapOffset
+
+  writeln("")
+  writeln(&"    BAR0: {bar0:0>8x}h")
+  writeln(&"    BAR1: {bar1:0>8x}h")
+  writeln(&"    BAR2: {bar2:0>8x}h")
+  writeln(&"    BAR3: {bar3:0>8x}h")
+  writeln(&"    BAR4: {bar4:0>8x}h")
+  writeln(&"    BAR5: {bar5:0>8x}h")
 
   writeln("")
 
