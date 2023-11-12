@@ -100,7 +100,23 @@ const
   }.toTable
 
 type
-  PciCapability = enum
+  PciDeviceConfig* = object
+    bus*: uint8
+    slot*: uint8
+    fn*: uint8
+    vendorId*: uint16
+    deviceId*: uint16
+    classCode*: uint8
+    subClass*: uint8
+    progIf*: uint8
+    revisionId*: uint8
+    bar*: array[6, uint32]
+    interruptLine*: uint8
+    interruptPin*: uint8
+    capabilities*: seq[PciCapability]
+    desc*: string
+
+  PciCapability* = enum
     Null
     PowerManagement
     Agp
@@ -124,40 +140,140 @@ type
     EnhancedAllocation
     FlatteningPortalBridge
 
-proc pciConfigRead32*(bus, dev, fn, offset: uint8): uint32 =
+  PciConfigSpaceRegister = enum
+    VendorId = 0x00
+    DeviceId = 0x02
+    Command = 0x04
+    Status = 0x06
+    RevisionId = 0x08
+    ProgIf = 0x09
+    SubClass = 0x0a
+    ClassCode = 0x0b
+    CacheLineSize = 0x0c
+    LatencyTimer = 0x0d
+    HeaderType = 0x0e
+    Bist = 0x0f
+    Bar0 = 0x10
+    Bar1 = 0x14
+    Bar2 = 0x18
+    Bar3 = 0x1c
+    Bar4 = 0x20
+    Bar5 = 0x24
+    CardbusCisPointer = 0x28
+    SubsystemVendorId = 0x2c
+    SubsystemId = 0x2e
+    ExpansionRomBaseAddress = 0x30
+    CapabilitiesPointer = 0x34
+    InterruptLine = 0x3c
+    InterruptPin = 0x3d
+    MinGrant = 0x3e
+    MaxLatency = 0x3f
+
+
+converter toUInt8(x: PciConfigSpaceRegister): uint8 = x.uint8
+
+
+proc pciConfigRead32*(bus, slot, fn, offset: uint8): uint32 =
   assert offset mod 4 == 0
 
   let address: uint32 =
     (1.uint32 shl 31) or
     (bus.uint32 shl 16) or
-    (dev.uint32 shl 11) or
+    (slot.uint32 shl 11) or
     (fn.uint32 shl 8) or
     offset
 
   portOut32(0xcf8'u16, address)
   result = portIn32(0xcfc)
 
-proc addrOf(bus, dev, fn, offset: uint8): uint32 =
+
+proc addrOf(bus, slot, fn, offset: uint8): uint32 =
   result = (1.uint32 shl 31) or
     (bus.uint32 shl 16) or
-    (dev.uint32 shl 11) or
+    (slot.uint32 shl 11) or
     (fn.uint32 shl 8) or
     (offset and not 0b11'u8)
 
-proc pciConfigRead16*(bus, dev, fn, offset: uint8): uint16 =
+
+proc pciConfigRead16*(bus, slot, fn, offset: uint8): uint16 =
   assert offset mod 2 == 0
 
-  let address: uint32 = addrOf(bus, dev, fn, offset)
+  let address: uint32 = addrOf(bus, slot, fn, offset)
 
   portOut32(0xcf8, address)
   var dword = portIn32(0xcfc) shr ((offset and 0x2) * 8)
 
   result = dword.uint16
 
-proc pciNextCapability*(bus, dev, fn, offset: uint8): tuple[capValue: uint8, nextOffset: uint8] =
+
+proc pciNextCapability*(bus, slot, fn, offset: uint8): tuple[capValue: uint8, nextOffset: uint8] =
   let
-    capReg = pciConfigRead16(bus, dev, fn, offset)
+    capReg = pciConfigRead16(bus, slot, fn, offset)
     capValue = (capReg and 0xff).uint8
     nextOffset = (capReg shr 8).uint8
 
   result = (capValue, nextOffset)
+
+
+proc getDeviceConfig(bus, slot, fn: uint8): PciDeviceConfig =
+  result.bus = bus
+  result.slot = slot
+  result.fn = fn
+
+  result.vendorId = pciConfigRead16(bus, slot, fn, VendorId)
+  result.deviceId = pciConfigRead16(bus, slot, fn, DeviceId)
+
+  if result.vendorId == 0xffff:  # no device function
+    return
+
+  let class = pciConfigRead32(bus, slot, fn, RevisionId)
+  result.classCode = (class shr 24).uint8
+  result.subClass = (class shr 16).uint8
+  result.progIF = (class shr 8).uint8
+
+  # Base Address Registers
+  result.bar[0] = pciConfigRead32(bus, slot, fn, Bar0)
+  result.bar[1] = pciConfigRead32(bus, slot, fn, Bar1)
+  result.bar[2] = pciConfigRead32(bus, slot, fn, Bar2)
+  result.bar[3] = pciConfigRead32(bus, slot, fn, Bar3)
+  result.bar[4] = pciConfigRead32(bus, slot, fn, Bar4)
+  result.bar[5] = pciConfigRead32(bus, slot, fn, Bar5)
+
+  let interrupt = pciConfigRead16(bus, slot, fn, InterruptLine)
+  result.interruptLine = (interrupt and 0xff).uint8
+  result.interruptPin = (interrupt shr 8).uint8
+
+  result.desc = PciClassCode.getOrDefault((result.classCode, result.subClass, result.progIF), "")
+
+  let status = pciConfigRead16(bus, slot, fn, Status)
+  if (status and 0x10) == 1:  # has capabilities
+    var
+      capOffset = pciConfigRead16(bus, slot, fn, CapabilitiesPointer).uint8
+      capValue: uint8
+
+    while capOffset != 0:
+      (capValue, capOffset) = pciNextCapability(bus, slot, fn, capOffset)
+      result.capabilities.add(cast[PciCapability](capValue))
+
+
+iterator enumeratePciSlot(bus: uint8, slot: uint8): PciDeviceConfig {.closure.} =
+  let dev0 = getDeviceConfig(bus, slot, 0)
+  if dev0.vendorId == 0xffff:  # no device
+    return
+
+  yield dev0
+
+  let headerType = pciConfigRead16(bus, slot, 0, HeaderType)
+  let isMultiFunction = (headerType and 0x80) shr 7
+
+  if isMultiFunction == 1:
+    for fn in 0.uint8 ..< 8:
+      let dev = getDeviceConfig(bus, slot, fn)
+      if dev.vendorId != 0xffff:
+        yield dev
+
+
+iterator enumeratePciBus*(bus: uint8): PciDeviceConfig {.closure.} =
+  for slot in 0.uint8 ..< 32:
+    for devConfig in enumeratePciSlot(bus, slot):
+      yield devConfig

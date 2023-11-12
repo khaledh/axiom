@@ -44,7 +44,7 @@ const
   BgaLfbEnabled              = 0x40
   # BgaNoClearMem              = 0x80
 
-  BgaLfbPhysicalAddress*     = 0xc0000000'u32
+  BgaLfbPhysicalAddress*     = 0x80000000'u32
 
 
 proc bgaWriteRegister(index, value: uint16) =
