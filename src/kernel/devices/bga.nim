@@ -3,6 +3,7 @@
 ]#
 import std/strformat
 
+import pci
 import ports
 import ../debug
 
@@ -44,7 +45,8 @@ const
   BgaLfbEnabled              = 0x40
   # BgaNoClearMem              = 0x80
 
-  BgaLfbPhysicalAddress*     = 0x80000000'u32
+var
+  BgaLfbPhysicalAddress*     = 0xc0000000'u32
 
 
 proc bgaWriteRegister(index, value: uint16) =
@@ -76,3 +78,7 @@ proc init*(xres, yres: uint16) =
   let virtWidth = bgaReadRegister(BgaPortIndexVirtWidth)
   let virtHeight = bgaReadRegister(BgaPortIndexVirtHeight)
   debugln(&"[bga] VirtualRes = {virtWidth}x{virtHeight}")
+
+
+proc initPci*(dev: PciDeviceConfig) =
+  BgaLfbPhysicalAddress = dev.bar[0]

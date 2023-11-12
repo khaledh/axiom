@@ -10,6 +10,7 @@ import timer
 import devices/bga
 import devices/console
 import devices/cpu
+import devices/devmgr
 import devices/keyboard
 import devices/pic
 
@@ -58,6 +59,8 @@ proc init*(sysTable: ptr EfiSystemTable) =
   idt.init()
 
   interrupt.init()
+
+  devmgr.init()
 
   #############################################
   ##  Setup keyboard
