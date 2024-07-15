@@ -1,3 +1,5 @@
+### Note: Development on this project has stopped, and new development happens at [https://github.com/khaledh/fusion](https://github.com/khaledh/fusion).
+
 ## Axiom OS
 
 This is my attempt at creating a modern 64-bit kernel in Nim.
